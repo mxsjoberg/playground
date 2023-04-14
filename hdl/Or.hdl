@@ -1,0 +1,28 @@
+// Or.hdl
+
+// (a OR b) -> NOT(NOT(a) AND NOT(b))
+
+CHIP Or {
+    IN a, b;
+    OUT out;
+
+    PARTS:
+    
+    // Not
+    Not(
+        in = a,
+        out = nota
+    );
+    Not(
+        in = b,
+        out = notb
+    );
+
+    // Nand
+    Nand(
+        a = nota,
+        b = notb,
+        out = out
+    );
+
+}

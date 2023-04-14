@@ -1,0 +1,18 @@
+// Not.hdl
+
+// a = b, NOT(a) -> NOT(a AND b)
+
+CHIP Not {
+    IN in;
+    OUT out;
+
+    // implementation
+    PARTS:
+    
+    // Nand
+    Nand(
+        a = in,
+        b = in,
+        out = out
+    );
+}
