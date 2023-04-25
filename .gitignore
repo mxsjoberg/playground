@@ -1,2 +1,7 @@
 python/chatgpt/API.txt
 .DS_Store
+c/yacc/lex.yy.c
+c/yacc/calc
+c/yacc/y.output
+c/yacc/y.tab.c
+c/yacc/y.tab.h
