@@ -46,7 +46,7 @@ print('Python Version: ' + sys.version)
 '''
 
 # ---------------------------------------------------
-# Lexer : Generate tokens
+# Lexer : Token
 # ---------------------------------------------------
 INTEGER       = 'INTEGER'
 REAL          = 'REAL'
@@ -106,21 +106,16 @@ RESERVED_KEYWORDS = {
 class Lexer(object):
     def __init__(self, text):
         self.text = text
-
         # index in text
         self.pos = 0
-
         # current character
         self.current_char = self.text[self.pos]
 
-    def error(self): raise Exception('Invalid character.')
+    def error(self):
+        raise Exception('Invalid character.')
 
     def increment(self):
-        '''
-        Increment index in text and set current character.
-        '''
         self.pos += 1
-        
         if (self.pos > len(self.text) - 1):
             # end of input
             self.current_char = None
@@ -129,7 +124,6 @@ class Lexer(object):
 
     def peek(self):
         peek_pos = self.pos + 1
-
         if (peek_pos > len(self.text) - 1):
             return None
         else:
@@ -142,147 +136,110 @@ class Lexer(object):
     def skip_comment(self):
         while (self.current_char != '}'):
             self.increment()
-
-        # closing curly brace
+        # close curly brace
         self.increment()
 
     def number(self):
-        '''
-        Return integer or float.
-        '''
         result = ''
-        
         while (self.current_char is not None and self.current_char.isdigit()):
             result += self.current_char
             self.increment()
-
         if (self.current_char == '.'):
             result += self.current_char
             self.increment()
-
             while (self.current_char is not None and self.current_char.isdigit()):
                 result += self.current_char
                 self.increment()
-
             token = Token('REAL_CONST', float(result))
         else:
             token = Token('INTEGER_CONST', int(result))
-
         return token
 
     def _id(self):
-        '''
-        Handle identifiers and reserved keywords.
-        '''
         result = ''
-
         while (self.current_char is not None and self.current_char.isalnum()):
             result += self.current_char
             self.increment()
-
         token = RESERVED_KEYWORDS.get(result.upper(), Token(ID, result.lower()))
-        #token = RESERVED_KEYWORDS.get(result, Token(ID, result))
         return token
 
-    # lexical analyzer (tokenizer)
+    # tokenizer
     def get_next_token(self):
-        '''
-        Break input into tokens.
-        '''
-
         while (self.current_char is not None):
-
-            # whitespace (skip)
+            # whitespace
             if (self.current_char.isspace()):
                 self.skip_whitespace()
                 continue
-
             # comment
             if (self.current_char == '{'):
                 self.increment()
                 self.skip_comment()
                 continue
-
             # ID
             if (self.current_char.isalpha()):
                 return self._id()
-
-            # INTEGER FLOAT
+            # INTEGER REAL
             if (self.current_char.isdigit()):
                 return self.number()
-
             # ASSIGN
             if (self.current_char == ':' and self.peek() == '='):
                 self.increment()
                 self.increment()
                 return Token(ASSIGN, ':=')
-
             # SEMI
             if (self.current_char == ';'):
                 self.increment()
                 return Token(SEMI, ';')
-
             # COLON
             if (self.current_char == ':'):
                 self.increment()
                 return Token(COLON, ':')
-
             # COMMA
             if (self.current_char == ','):
                 self.increment()
                 return Token(COMMA, ',')
-
             # PLUS
             if (self.current_char == '+'):
                 self.increment()
                 return Token(PLUS, '+')
-
             # MINUS
             if (self.current_char == '-'):
                 self.increment()
                 return Token(MINUS, '-')
-
             # MULTIPLY
             if (self.current_char == '*'):
                 self.increment()
                 return Token(MULTIPLY, '*')
-
             # FLOAT_DIV
             if (self.current_char == '/'):
                 self.increment()
                 return Token(FLOAT_DIV, '/')
-
             # LPAR
             if (self.current_char == '('):
                 self.increment()
                 return Token(LPAR, '(')
-
             # RPAR
             if (self.current_char == ')'):
                 self.increment()
                 return Token(RPAR, ')')
-
             # DOT
             if (self.current_char == '.'):
                 self.increment()
                 return Token(DOT, '.')
-
+            # ERROR
             self.error()
 
         return Token(EOF, None)
 
 # ---------------------------------------------------
-# Parser : Build AST (using tokens)
+# Parser : AST
 # ---------------------------------------------------
 class AST(object):
     pass
 
 class Compound(AST):
-    '''
-    Represent 'BEGIN ... END' block.
-    '''
-
-    def __init__(self): self.children = []
+    def __init__(self):
+        self.children = []
 
 class Assign(AST):
     def __init__(self, left, operator, right):
@@ -308,7 +265,6 @@ class BinaryOperator(AST):
                 Number(7)
             Number(3)
         '''
-
         self.left = left
         self.token = operator
         self.operator = operator
@@ -326,10 +282,6 @@ class Number(AST):
         self.value = token.value
 
 class Program(AST):
-    '''
-    Root node.
-    '''
-
     def __init__(self, name, block):
         self.name = name
         self.block = block
@@ -352,81 +304,74 @@ class Type(AST):
 class Parser(object):
     def __init__(self, lexer):
         self.lexer = lexer
-
         # set current token to first token from input
         self.current_token = self.lexer.get_next_token()
 
-    def error(self): raise Exception('Invalid syntax.')
+    def error(self):
+        raise Exception('Invalid syntax.')
 
     def eat(self, token_type):
-        '''
-        Eat current token if match with passed token type.
-        '''
-
         if (self.current_token.type_ == token_type):
             self.current_token = self.lexer.get_next_token()
         else:
             self.error()
 
+    # program : PROGRAM variable SEMI block DOT
     def program(self):
-        '''
-        program : PROGRAM variable SEMI block DOT
-        '''
+        # PROGRAM
         self.eat(PROGRAM)
-        
+        # variable
         variable_node = self.variable()
         program_name = variable_node.value
+        # SEMI
         self.eat(SEMI)
+        # block
         block_node = self.block()
-        program_node = Program(program_name, block_node)
-        self.eat(DOT)
 
+        program_node = Program(program_name, block_node)
+        # DOT
+        self.eat(DOT)
         return program_node
 
+    # block : declarations compound_statement
     def block(self):
-        '''
-        block : declarations compound_statement
-        '''
-
+        # declarations
         declaration_nodes = self.declarations()
+        # compound_statement
         compound_statement_node = self.compound_statement()
 
         node = Block(declaration_nodes, compound_statement_node)
-
         return node
 
+    # declarations : VAR (variable_declaration SEMI)+ | empty
     def declarations(self):
-        '''
-        declarations : VAR (variable_declaration SEMI)+ | empty
-        '''
         declarations = []
-
         if (self.current_token.type_ == VAR):
+            # VAR
             self.eat(VAR)
-
             while (self.current_token.type_ == ID):
+                # variable_declaration
                 variable_declaration = self.variable_declaration()
                 declarations.extend(variable_declaration)
+                # SEMI
                 self.eat(SEMI)
 
         return declarations
 
+    # variable_declaration : ID (COMMA ID)* COLON type_spec
     def variable_declaration(self):
-        '''
-        variable_declaration : ID (COMMA ID)* COLON type_spec
-        '''
-
-        # first ID
+        # ID
         variable_nodes = [Variable(self.current_token)]
         self.eat(ID)
-
         while (self.current_token.type_ == COMMA):
+            # COMMA
             self.eat(COMMA)
+            # ID
             variable_nodes.append(Variable(self.current_token))
             self.eat(ID)
-
+        # COLON
         self.eat(COLON)
-
+        # type_spec
         type_node = self.type_spec()
         variable_declarations = [
             VariableDeclaration(variable_node, type_node)
@@ -435,28 +380,26 @@ class Parser(object):
 
         return variable_declarations
 
+    # type_spec : INTEGER | REAL
     def type_spec(self):
-        '''
-        type_spec : INTEGER | REAL
-        '''
         token = self.current_token
-
         if (self.current_token.type_ == INTEGER):
+            # INTEGER
             self.eat(INTEGER)
         else:
+            # REAL
             self.eat(REAL)
 
         node = Type(token)
-
         return node
 
+    # compound_statement : BEGIN statement_list END
     def compound_statement(self):
-        '''
-        compound_statement : BEGIN statement_list END
-        '''
-
+        # BEGIN
         self.eat(BEGIN)
+        # statement_list
         nodes = self.statement_list()
+        # END
         self.eat(END)
 
         root = Compound()
@@ -465,29 +408,20 @@ class Parser(object):
 
         return root
 
+    # statement_list : statement | statement SEMI statement_list
     def statement_list(self):
-        '''
-        statement_list : statement | statement SEMI statement_list
-        '''
-
+        # statement
         node = self.statement()
-
         results = [node]
-
         while (self.current_token.type_ == SEMI):
+            # SEMI
             self.eat(SEMI)
             results.append(self.statement())
 
-        # if (self.current_token.type_ == ID):
-        #     self.error()
-
         return results
 
+    # statement : compound_statement | assignment_statement | empty
     def statement(self):
-        '''
-        statement : compound_statement | assignment_statement | empty
-        '''
-
         if (self.current_token.type_ == BEGIN):
             node = self.compound_statement()
 
@@ -499,107 +433,92 @@ class Parser(object):
 
         return node
 
+    # assignment_statement : variable ASSIGN expr
     def assignment_statement(self):
-        '''
-        assignment_statement : variable ASSIGN expr
-        '''
-
+        # variable
         left = self.variable()
         token = self.current_token
+        # ASSIGN
         self.eat(ASSIGN)
+        # expr
         right = self.expr()
+        
         node = Assign(left, token, right)
-
         return node
 
+    # variable : ID
     def variable(self):
-        '''
-        variable : ID
-        '''
-
+        # ID
         node = Variable(self.current_token)
         self.eat(ID)
 
         return node
 
-    def empty(self): return Empty()
+    # empty : 
+    def empty(self):
+        return Empty()
 
+    # factor : PLUS factor | MINUS factor | INTEGER_CONST | REAL_CONST | LPAR expr RPAR | variable
     def factor(self):
-        '''
-        factor : PLUS factor | MINUS factor | INTEGER_CONST | REAL_CONST | LPAR expr RPAR | variable
-        '''
         token = self.current_token
-
         # PLUS
         if (token.type_ == PLUS):
             self.eat(PLUS)
             node = UnaryOperator(token, self.factor())
             return node
-
         # MINUS
         elif (token.type_ == MINUS):
             self.eat(MINUS)
             node = UnaryOperator(token, self.factor())
             return node
-
         # INTEGER_CONST
         elif (token.type_ == INTEGER_CONST):
             self.eat(INTEGER_CONST)
             return Number(token)
-
-        # REAL_CONST 
+        # REAL_CONST
         elif (token.type_ == REAL_CONST):
             self.eat(REAL_CONST)
             return Number(token)
-        
         # LPAR expr LPAR
         elif (token.type_ == LPAR):
             self.eat(LPAR)
             node = self.expr()
             self.eat(RPAR)
             return node
-
+        # variable
         else:
             node = self.variable()
             return node
 
+    # term : factor ((MULTIPLY | INTEGER_DIV | FLOAT_DIV) factor)*
     def term(self):
-        '''
-        term : factor ((MULTIPLY | INTEGER_DIV | FLOAT_DIV) factor)*
-        '''
+        # factor
         node = self.factor()
-        
         while (self.current_token.type_ in (MULTIPLY, INTEGER_DIV, FLOAT_DIV)):
             token = self.current_token
-
             # MULTIPLY
-            if (token.type_ == MULTIPLY)        : self.eat(MULTIPLY)
+            if (token.type_ == MULTIPLY):
+                self.eat(MULTIPLY)
             # INTEGER_DIV
-            elif (token.type_ == INTEGER_DIV)   : self.eat(INTEGER_DIV)
+            elif (token.type_ == INTEGER_DIV):
+                self.eat(INTEGER_DIV)
             # FLOAT_DIV
-            elif (token.type_ == FLOAT_DIV)     : self.eat(FLOAT_DIV)
+            elif (token.type_ == FLOAT_DIV):
+                self.eat(FLOAT_DIV)
 
             node = BinaryOperator(left=node, operator=token, right=self.factor())
 
         return node
 
+    # expr : term ((PLUS | MINUS) term)*
     def expr(self):
-        '''
-        Arithmetic expression parser.
-        
-        expr   : term ((PLUS | MINUS) term)*
-        term   : factor ((MUL | DIV) factor)*
-        factor : INTEGER | LPAR expr RPAR
-        '''
+        # term
         node = self.term()
-        
         while (self.current_token.type_ in (PLUS, MINUS)):
             token = self.current_token
-            
             # PLUS
             if (token.type_ == PLUS):
                 self.eat(PLUS)
-            
             # MINUS
             elif (token.type_ == MINUS):
                 self.eat(MINUS)
@@ -610,15 +529,15 @@ class Parser(object):
 
     # syntax analyzer
     def parse(self):
+        # start to parse at program node
         node = self.program()
-
         if (self.current_token.type_ != EOF):
             self.error()
 
         return node
 
 # ---------------------------------------------------
-# Interpreter : Execute instructions in AST
+# Interpreter
 # ---------------------------------------------------
 class NodeVisitor(object):
     def visit(self, node):
@@ -633,10 +552,10 @@ class NodeVisitor(object):
 class Interpreter(NodeVisitor):
     def __init__(self, parser):
         self.parser = parser
+        # symbol table
         self.GLOBAL_SCOPE = {}
 
     def visit_Program(self, node):
-
         self.visit(node.block)
 
     def visit_Block(self, node):
