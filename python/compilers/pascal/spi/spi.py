@@ -1,4 +1,3 @@
-# Recursive descent parser: https://en.wikipedia.org/wiki/Recursive_descent_parser
 import sys
 print('Python Version: ' + sys.version)
 
@@ -253,7 +252,8 @@ class Lexer(object):
 # ---------------------------------------------------
 # Parser : Build AST (using tokens)
 # ---------------------------------------------------
-class AST(object): pass
+class AST(object):
+    pass
 
 class Compound(AST):
     '''
@@ -274,7 +274,8 @@ class Variable(AST):
         self.token = token
         self.value = token.value
 
-class Empty(AST): pass
+class Empty(AST):
+    pass
 
 class BinaryOperator(AST):
     def __init__(self, left, operator, right):
@@ -702,9 +703,5 @@ def main():
         
         print(result)
 
-if (__name__ == '__main__'): main()
-
-
-
-
-
+if (__name__ == '__main__'):
+    main()
