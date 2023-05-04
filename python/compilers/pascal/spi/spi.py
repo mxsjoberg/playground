@@ -564,7 +564,8 @@ class Interpreter(NodeVisitor):
 
         self.visit(node.compound_statement)
 
-    def visit_VariableDeclaration(self, node): pass
+    def visit_VariableDeclaration(self, node):
+        pass
 
     def visit_Type(self, node): pass
 
