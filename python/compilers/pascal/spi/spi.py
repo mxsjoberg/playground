@@ -1,25 +1,47 @@
+# https://ruslanspivak.com/lsbasi-part10/
+
 import sys
 print('Python Version: ' + sys.version)
-
-# https://ruslanspivak.com/lsbasi-part1/
-# https://github.com/rspivak/lsbasi/blob/master/part7/rust/spi/src/main.rs
 
 '''
     Context-free grammars (Backus-Naur Form)
 
     program                 : PROGRAM variable SEMI block DOT
+    
     block                   : declarations compound_statement
-    declarations            : VAR (variable_declaration SEMI)+ | empty
+    
+    declarations            : VAR (variable_declaration SEMI)+
+                            | empty
+    
     variable_declaration    : ID (COMMA ID)* COLON type_spec
-    type_spec               : INTEGER | REAL
+    
+    type_spec               : INTEGER
+                            | REAL
+    
     compound_statement      : BEGIN statement_list END
-    statement_list          : statement | statement SEMI statement_list
-    statement               : compound_statement | assignment_statement | empty
+    
+    statement_list          : statement
+                            | statement SEMI statement_list
+    
+    statement               : compound_statement
+                            | assignment_statement
+                            | empty
+    
     assignment_statement    : variable ASSIGN expr
+    
     empty                   : 
+    
     expr                    : term ((PLUS | MINUS) term)*
+    
     term                    : factor ((MULTIPLY | INTEGER_DIV | FLOAT_DIV) factor)*
-    factor                  : PLUS factor | MINUS factor | INTEGER_CONST | REAL_CONST | LPAR expr RPAR | variable
+    
+    factor                  : PLUS factor
+                            | MINUS factor
+                            | INTEGER_CONST
+                            | REAL_CONST
+                            | LPAR expr RPAR
+                            | variable
+    
     variable                : ID
 '''
 
@@ -686,22 +708,49 @@ class Interpreter(NodeVisitor):
         return self.visit(tree)
 
 def main():
-    while True:
-        try:
-            text = input('calculator> ')
-
-        except EOFError:
-            break
-
-        if not text:
-            continue
+    # read from file
+    if len(sys.argv) > 1:
+        text = open(sys.argv[1], 'r').read()
 
         lexer = Lexer(text)
         parser = Parser(lexer)
         interpreter = Interpreter(parser)
         result = interpreter.interpret()
-        
-        print(result)
+
+        for k, v in sorted(interpreter.GLOBAL_SCOPE.items()):
+            print('{} = {}'.format(k, v))
+    # repl
+    else:
+        while True:
+            try:
+                text = input('spi> ')
+            except EOFError:
+                break
+            if not text:
+                continue
+
+            lexer = Lexer(text)
+            parser = Parser(lexer)
+            interpreter = Interpreter(parser)
+            result = interpreter.interpret()
+            
+            print(result)
 
 if (__name__ == '__main__'):
     main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
