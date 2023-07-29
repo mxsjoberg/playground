@@ -1,0 +1,14 @@
+diff --git a/python/compilers/pascal/spi/spi.py b/python/compilers/pascal/spi/spi.py
+index 93c2eb2..b15483d 100644
+--- a/python/compilers/pascal/spi/spi.py
++++ b/python/compilers/pascal/spi/spi.py
+@@ -564,7 +564,8 @@ class Interpreter(NodeVisitor):
+ 
+         self.visit(node.compound_statement)
+ 
+-    def visit_VariableDeclaration(self, node): pass
++    def visit_VariableDeclaration(self, node):
++        pass
+ 
+     def visit_Type(self, node): pass
+ 
