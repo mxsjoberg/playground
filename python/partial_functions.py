@@ -13,10 +13,8 @@ print(cube(2))
 
 # partial functions with map
 numbers = [1, 2, 3, 4, 5]
-squares = map(square, numbers)
-cubes = map(cube, numbers)
 
-print(list(squares))
+print(list(map(square, numbers)))
 # [1, 4, 9, 16, 25]
-print(list(cubes))
+print(list(map(cube, numbers)))
 # [1, 8, 27, 64, 125]
