@@ -6,3 +6,4 @@ c/yacc/y.output
 c/yacc/y.tab.c
 c/yacc/y.tab.h
 *.pyc
+python/tvm/tvm_ir.py
