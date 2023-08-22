@@ -31,39 +31,6 @@ __kernel void add(__global float *a, __global float *b, __global float *result, 
     }
 }
 """
-# kernel_code = """
-# __kernel void matmul(__global float *a, __global float *b, __global float *result, const int m, const int n, const int k) {
-#     int row = get_global_id(0);
-#     int col = get_global_id(1);
-
-#     // tiling
-#     const int tile_size = 16;
-
-#     __local float a_tile[16][16];
-#     __local float b_tile[16][16];
-    
-#     float sum = 0.0f;
-
-#     for (int t = 0; t < k / 16; t++) {
-#         int t_row = get_local_id(0);
-#         int t_col = get_local_id(1);
-
-#         a_tile[t_row][t_col] = a[row * k + t * 16 + t_col];
-#         b_tile[t_row][t_col] = b[(t * 16 + t_row) * n + col];
-
-#         // wait for all threads to finish
-#         barrier(CLK_LOCAL_MEM_FENCE);
-
-#         for (int k = 0; k < 16; k++) {
-#             sum += a_tile[t_row][k] * b_tile[k][t_col];
-#         }
-
-#         // wait for all threads to finish
-#         barrier(CLK_LOCAL_MEM_FENCE);
-#     }
-#     result[row * n + col] = sum;
-# }
-# """
 # compile kernel
 program = cl.Program(context, kernel_code).build()
 # create buffers
@@ -75,16 +42,8 @@ result_buffer = cl.Buffer(context, cl.mem_flags.WRITE_ONLY, result.nbytes)
 def run_opencl():
     # execute kernel
     program.add(queue, a.shape, None, a_buffer, b_buffer, result_buffer, np.int32(size))
-    # program.matmul(queue, (size, size), None, a_buffer, b_buffer, result_buffer, np.int32(size), np.int32(size), np.int32(size))
     # copy result
     cl.enqueue_copy(queue, result, result_buffer)
-
-# non-numpy result to compare with
-# non_numpy_result = np.zeros(size).astype(np.float32)
-# def add_non_numpy():
-#     # global non_numpy_result
-#     for i in range(size):
-#         non_numpy_result[i] = a[i] + b[i]
 
 # numpy result to compare with
 numpy_result = np.zeros(size).astype(np.float32)
@@ -92,15 +51,6 @@ def run_numpy():
     global numpy_result
     numpy_result = a + b
 
-# run_opencl()
-# for i in range(10):
-#     print(result[i])
-
-# run_numpy()
-# for i in range(10):
-#     print(numpy_result[i])
-
-# print(timeit.timeit('add_non_numpy', globals=globals(), number=1))
 print(timeit.timeit('run_numpy', globals=globals(), number=1))
 # 1.0561197996139526e-06
 print(timeit.timeit('run_opencl', globals=globals(), number=1))
