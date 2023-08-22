@@ -8,3 +8,4 @@ c/yacc/y.tab.h
 *.pyc
 python/tvm/tvm_ir.py
 c/linked_list
+python/dead_code_elimination.py
