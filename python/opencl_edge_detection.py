@@ -6,6 +6,8 @@ from PIL import Image, ImageFilter
 input_image = Image.open('images/photo.png').convert('L')
 input_array = np.array(input_image).astype(np.uint8)
 
+input_image.show()
+
 # sobel kernel
 # sobel_x_kernel = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]).astype(np.float32)
 # sobel_y_kernel = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]]).astype(np.float32)
