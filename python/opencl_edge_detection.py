@@ -22,13 +22,10 @@ output_buffer = cl.Buffer(ctx, cl.mem_flags.WRITE_ONLY, input_array.nbytes)
 
 # compile kernel
 program = cl.Program(ctx, """
-    __kernel void sobel_filter(__global const uchar* input,
-                               __global uchar* output,
-                               const int width,
-                               const int height) {
+    __kernel void sobel_filter(__global const uchar* input, __global uchar* output, const int width, const int height) {
         int x = get_global_id(0);
         int y = get_global_id(1);
-        
+
         if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
             float sum_x = 0;
             float sum_y = 0;
