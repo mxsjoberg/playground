@@ -4,7 +4,7 @@ from PIL import Image, ImageFilter
 
 # load image
 input_image = Image.open('images/photo.png').convert('L')
-input_array = np.array(input_image).astype(np.float32)
+input_array = np.array(input_image).astype(np.uint8)
 
 # sobel kernel
 # sobel_x_kernel = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]).astype(np.float32)
@@ -42,8 +42,11 @@ program = cl.Program(ctx, """
                     sum_y += input[(y + i) * width + (x + j)] * sobel_y_kernel[i + 1][j + 1];
                 }
             }
+
+            float gradient_magnitude = sqrt(sum_x * sum_x + sum_y * sum_y);
+            gradient_magnitude = gradient_magnitude > 255 ? 255 : gradient_magnitude;
             
-            output[y * width + x] = (uchar)(sqrt(sum_x * sum_x + sum_y * sum_y));
+            output[y * width + x] = (uchar)gradient_magnitude;
         } else {
             output[y * width + x] = 0;
         }
@@ -62,5 +65,3 @@ output_image.save('images/edges.png')
 
 # show image
 output_image.show()
-
-# TODO: output image is not correct?
