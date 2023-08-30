@@ -17,7 +17,7 @@ class SchellingAgent(Agent):
 	def step(self):
 		similar = 0
 		# find similar neighbours
-		for neighbour in self.model.grid.neighbor_iter(self.position):
+		for neighbour in self.model.grid.get_neighbors(self.position, moore=False):
 			if neighbour.type == self.type:
 				similar += 1
 
@@ -55,8 +55,8 @@ class Schelling(Model):
 
 		# agent setup
 		for cell in self.grid.coord_iter():
-			x = cell[1]
-			y = cell[2]
+			x = cell[1][0]
+			y = cell[1][1]
 
 			if self.random.random() < self.density:
 				if self.random.random() < self.minority_pc:
@@ -65,7 +65,7 @@ class Schelling(Model):
 					agent_type = 0
 
 				agent = SchellingAgent((x, y), self, agent_type)
-				self.grid.position_agent(agent, (x, y))
+				self.grid.place_agent(agent, (x, y))
 				self.schedule.add(agent)
 
 		self.running = True

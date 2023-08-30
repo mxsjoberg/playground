@@ -1,6 +1,6 @@
 from mesa.visualization.ModularVisualization import ModularServer
 from mesa.visualization.modules import CanvasGrid, ChartModule, TextElement
-from mesa.visualization.UserParam import UserSettableParameter
+from mesa.visualization.UserParam import Slider
 
 # model
 from model import Schelling
@@ -39,9 +39,9 @@ happy_chart = ChartModule([{ "Label": "happy", "Color": "Black" }])
 model_params = {
 	"height": 20,
 	"width": 20,
-	"density": UserSettableParameter("slider", "Agent density", 0.8, 0.1, 1.0, 0.1),
-	"minority_pc": UserSettableParameter("slider", "Fraction minority", 0.2, 0.00, 1.0, 0.05),
-	"homophily": UserSettableParameter("slider", "Homophily", 3, 0, 8, 1)
+	"density": Slider("Agent density", 0.8, 0.1, 1.0, 0.1),
+	"minority_pc": Slider("Fraction minority", 0.2, 0.00, 1.0, 0.05),
+	"homophily": Slider("Homophily", 3, 0, 8, 1)
 }
 
 server = ModularServer(Schelling, [canvas_element, happy_element, happy_chart], "Schelling", model_params)
