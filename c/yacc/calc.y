@@ -1,7 +1,8 @@
 /* 
-    yacc -d calc.y
-    yacc -dv calc.y (to verify grammar)
-    gcc y.tab.c -o calc
+    $ yacc -d calc.y
+    $ gcc y.tab.c -o calc
+
+    to verify grammar: $ yacc -dv calc.y
 */
 
 %{
@@ -38,5 +39,3 @@ int main(void) {
 void yyerror(char const *s) {
     fprintf(stderr, "error: %s\n", s);
 }
-
-
