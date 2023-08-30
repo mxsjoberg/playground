@@ -1,57 +1,77 @@
 import sys
-# import modules at runtime
-# import importlib
 
-# class Module:
-#   def add(_type, x1, x2):
-#       if _type == "float":
-#           return float(x1) + float(x2)
-#       elif _type == "int":
-#           return int(x1) + int(x2)
-
-# program = """
-# Module add float 1 2
-# """
-
-# tokens = program.split()
-# print(tokens)
-
-# result = getattr(getattr(sys.modules[__name__], tokens[0]), tokens[1])(tokens[2], tokens[3], tokens[4])
-# print(result)
-
-# args and kwargs
-class Module:
-    def add(*args, **kwargs):
-        type_ = globals()['__builtins__'].getattr(globals()['__builtins__'], kwargs['type'])
-        return sum(map(type_, args))
-
-program = """
-Module add 1 2 3 type=float
 """
-tokens = program.split()
-# print(tokens)
+simple domain-specific language
+    functions
+        add     : sum all arguments
+        sub     : subtract tail from head
+    types
+        int
+        float
+    arguments
+        out     : stdin to use previous output as input
+                : stdout to print
+"""
+program = """
+Module add 1 2 3 type=float out=stdin
+Module sub stdin 1 2 type=int out=stdout
+"""
 
-# def get_help(fname):
+# Module definition
+class Module:
+    # Add function
+    def add(*args, **kwargs):
+        type_ = globals()["__builtins__"].getattr(globals()["__builtins__"], kwargs["type"])
+        return sum(map(type_, args))
+    # Sub function
+    def sub(*args, **kwargs):
+        type_ = globals()["__builtins__"].getattr(globals()["__builtins__"], kwargs["type"])
+        return float(args[0]) if type_ == 'float' else int(args[0]) - sum(map(type_, args[1:]))
 
-
-def get_args(tokens):
+def get_args(tokens, STDIN):
     args = []
     kwargs = {}
     for token in tokens:
+        # kwargs
         if '=' in token:
             k, v = token.split('=', 1)
             kwargs[k] = v
+        # args
         else:
-            args.append(token)
-
+            # replace stdin with previous output
+            if token == "stdin":
+                if STDIN != "": args.append(STDIN)
+                else: raise Exception("no previous output")
+            else:
+                args.append(token)
     return args, kwargs
 
-args, kwargs = get_args(tokens[2:])
-print(args, kwargs)
-# print(getattr(sys.modules[__name__], tokens[0]))
-# print(getattr(getattr(sys.modules[__name__], tokens[0]), tokens[1]))
+def interpret(program):
+    STDIN = ""
+    lines = [line for line in program.splitlines() if line]
+    # print(lines)
+    # ['Module add 1 2 3 type=float out=stdin', 'Module sub stdin 1 2 type=int out=stdout']
 
-result = getattr(getattr(sys.modules[__name__], tokens[0]), tokens[1])(*args, **kwargs)
-print(result)
+    for line in lines:
+        tokens = line.split()
+        args, kwargs = get_args(tokens[2:], STDIN)
 
+        # print(args, kwargs)
+        # ['1', '2', '3'] {'type': 'float', 'out': 'stdin'}
+        # [6.0, '1', '2'] {'type': 'int', 'out': 'stdout'}
 
+        # print(getattr(sys.modules[__name__], tokens[0]))
+        # <class '__main__.Module'>
+        # <class '__main__.Module'>
+
+        # print(getattr(getattr(sys.modules[__name__], tokens[0]), tokens[1]))
+        # <function Module.add at 0x1024545e0>
+        # <function Module.sub at 0x108ed9620>
+
+        result = getattr(getattr(sys.modules[__name__], tokens[0]), tokens[1])(*args, **kwargs)
+        if "out" in kwargs:
+            if kwargs["out"] == "stdin": STDIN = result
+            if kwargs["out"] == "stdout": print(result)
+
+interpret(program)
+# 3
