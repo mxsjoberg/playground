@@ -261,28 +261,48 @@ instruction = [
     ( "rst\t7",    1 ),
 ]
 
-if (__name__ == "__main__"):
-	print(sys.argv)
-	# ['z80d.py', 'test']
+with open("hello.com", "rb") as file:
+    program = file.read()
+    # print(program)
 
-	if len(sys.argv) != 2:
-		print("usage, $ python z80d.py < file to disassemble >")
-	else:
-		program = open(sys.argv[1], 'rb').read()
+    addr = 0
+    while addr < len(program):
+        # print position and mnemonic
+        print('{}x\t{}'.format(addr, instruction[program[addr]][0]))
 
-		# location in program (position of current instruction)
-		addr = 0
-		while addr < len(program):
-			# print position and mnemonic
-			print('{}x\t{}'.format(addr, instruction[program[addr]][0]))
+        if instruction[program[addr]][1] > 1:
+            # next two bytes
+            if instruction[program[addr]][1] == 3:
+                print('{}x'.format(program[addr + 2]))
+            # next byte
+            else:
+                print('{}xh'.format(program[addr + 1]))
 
-			if instruction[program[addr]][1] > 1:
-				# next two bytes
-				if instruction[program[addr]][1] == 3:
-					print('{}x'.format(program[addr + 2]))
-				# next byte
-				else:
-					print('{}xh'.format(program[addr + 1]))
+        # increment position
+        addr += instruction[program[addr]][1]
 
-			# increment position
-			addr += instruction[program[addr]][1]
+# if (__name__ == "__main__"):
+# 	# print(sys.argv)
+# 	# ['z80d.py', 'test']
+
+# 	if len(sys.argv) != 2:
+# 		print("usage, $ python z80d.py < file to disassemble >")
+# 	else:
+# 		program = open(sys.argv[1], 'rb').read()
+
+# 		# location in program (position of current instruction)
+# 		addr = 0
+# 		while addr < len(program):
+# 			# print position and mnemonic
+# 			print('{}x\t{}'.format(addr, instruction[program[addr]][0]))
+
+# 			if instruction[program[addr]][1] > 1:
+# 				# next two bytes
+# 				if instruction[program[addr]][1] == 3:
+# 					print('{}x'.format(program[addr + 2]))
+# 				# next byte
+# 				else:
+# 					print('{}xh'.format(program[addr + 1]))
+
+# 			# increment position
+# 			addr += instruction[program[addr]][1]
