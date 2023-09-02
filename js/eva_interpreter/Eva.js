@@ -42,13 +42,35 @@ class Eva {
             return exp.slice(1, -1);
         }
         
-        // Arithmetic operations
+        // Arithmetic operators
         
         if (exp[0] === '+') {
             return this.eval(exp[1], env) + this.eval(exp[2], env);
         }
         if (exp[0] === '*') {
             return this.eval(exp[1], env) * this.eval(exp[2], env);
+        }
+
+        // Comparison operators
+
+        if (exp[0] === '>') {
+            return this.eval(exp[1], env) > this.eval(exp[2], env);
+        }
+
+        if (exp[0] === '>=') {
+            return this.eval(exp[1], env) >= this.eval(exp[2], env);
+        }
+
+        if (exp[0] === '<') {
+            return this.eval(exp[1], env) < this.eval(exp[2], env);
+        }
+
+        if (exp[0] === '>=') {
+            return this.eval(exp[1], env) >= this.eval(exp[2], env);
+        }
+
+        if (exp[0] === '=') {
+            return this.eval(exp[1], env) === this.eval(exp[2], env);
         }
 
         // Block
@@ -82,10 +104,21 @@ class Eva {
 
         if (exp[0] === 'if') {
             const [_tag, condition, consequent, alternate] = exp;
-            if (this.eval(condition)) {
-                return this.eval(consequent);
+            if (this.eval(condition, env)) {
+                return this.eval(consequent, env);
             }
-            return this.eval(alternate);
+            return this.eval(alternate, env);
+        }
+
+        // While-expression
+
+        if (exp[0] === 'while') {
+            const [_tag, condition, body] = exp;
+            let result;
+            while (this.eval(condition, env)) {
+                result = this.eval(body, env);
+            }
+            return result;
         }
         
         throw `TODO: ${JSON.stringify(exp)}`;
