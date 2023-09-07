@@ -1,6 +1,7 @@
-const assert = require("assert");
+// const assert = require("assert");
 
 const Environment = require("./Environment");
+const Transformer = require("./Transformer");
 
 /*
 
@@ -27,6 +28,7 @@ class Eva {
     
     constructor(global = GlobalEnvironment) {
         this.global = global;
+        this._transformer = new Transformer();
     }
 
     // Evaluate expression in given environment
@@ -134,8 +136,19 @@ class Eva {
             // return env.define(name, fn);
 
             // JIT-transpile to variable declaration
-            const varExp = ["var", name, ["lambda", params, body]];
+            // const varExp = ["var", name, ["lambda", params, body]];
+            const varExp = this._transformer.transformDefToVarLambda(exp);
             return this.eval(varExp, env);
+        }
+
+        // Switch-expression: (switch (cond1, block1) ...)
+        /*
+            syntactic sugar for nested if-expressions
+        */
+
+        if (exp[0] === 'switch') {
+            const ifExp = this._transformer.transformSwitchToIf(exp);
+            return this.eval(ifExp, env);
         }
 
         // Lambda function: (lambda (x) (* x x))
