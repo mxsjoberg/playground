@@ -35,14 +35,14 @@ class Eva {
         
         // Self-evaluating expressions
         
-        if (isNumber(exp)) {
+        if (this._isNumber(exp)) {
             return exp;
         }
-        if (isString(exp)) {
+        if (this._isString(exp)) {
             return exp.slice(1, -1);
         }
         
-        // Arithmetic operators
+        // Math operators
         
         if (exp[0] === '+') {
             return this.eval(exp[1], env) + this.eval(exp[2], env);
@@ -65,7 +65,7 @@ class Eva {
             return this.eval(exp[1], env) < this.eval(exp[2], env);
         }
 
-        if (exp[0] === '>=') {
+        if (exp[0] === '<=') {
             return this.eval(exp[1], env) >= this.eval(exp[2], env);
         }
 
@@ -96,7 +96,7 @@ class Eva {
 
         // Variable access
 
-        if (isVariableName(exp)) {
+        if (this._isVariableName(exp)) {
             return env.lookup(exp);
         }
 
@@ -136,18 +136,18 @@ class Eva {
 
         return result;
     }
-}
 
-function isNumber(exp) {
-    return typeof exp === "number";
-}
+    _isNumber(exp) {
+        return typeof exp === "number";
+    }
 
-function isString(exp) {
-    return typeof exp === "string" && exp[0] === '"' && exp.slice(-1) === '"';
-}
+    _isString(exp) {
+        return typeof exp === "string" && exp[0] === '"' && exp.slice(-1) === '"';
+    }
 
-function isVariableName(exp) {
-    return typeof exp === "string" && /^[a-zA-Z][a-zA-Z0-9_]*$/.test(exp);
+    _isVariableName(exp) {
+        return typeof exp === "string" && /^[a-zA-Z][a-zA-Z0-9_]*$/.test(exp);
+    }
 }
 
 module.exports = Eva;
