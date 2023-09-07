@@ -121,6 +121,34 @@ class Eva {
             return result;
         }
 
+        // function declaration: (def square (x) (* x x))
+        /*
+            syntactic sugar for: (var square (lambda (x) (* x x)))
+        */
+
+        if (exp[0] === 'def') {
+            const [_tag, name, params, body] = exp;
+            // including global env -> closure
+            // const fn = { params, body, env };
+
+            // return env.define(name, fn);
+
+            // JIT-transpile to variable declaration
+            const varExp = ["var", name, ["lambda", params, body]];
+            return this.eval(varExp, env);
+        }
+
+        // Lambda function: (lambda (x) (* x x))
+
+        if (exp[0] === 'lambda') {
+            const [_tag, params, body] = exp;
+            return {
+                params,
+                body,
+                env,
+            };
+        }
+
         // function call
         /*
             (print "hello eva")
@@ -133,16 +161,33 @@ class Eva {
             const args = exp.slice(1).map(arg => this.eval(arg, env));
 
             // native function
-
-            if (typeof fn === "function") {
+            if (typeof fn === 'function') {
                 return fn(...args);
             }
+
+            // user-defined function
+            const activationRecord = {};
+            fn.params.forEach((param, index) => {
+                activationRecord[param] = args[index];
+            });
+            const activationEnvironment = new Environment(
+                activationRecord,
+                fn.env,
+            );
+            return this._evalBody(fn.body, activationEnvironment);
         }
         
         throw `TODO: ${JSON.stringify(exp)}`;
     }
 
     // Helpers
+
+    _evalBody(body, env) {
+        if (body[0] === "begin") {
+            return this._evalBlock(body, env);
+        }
+        return this.eval(body, env);
+    }
 
     _evalBlock(block, env) {
         let result;
