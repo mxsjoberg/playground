@@ -3,23 +3,18 @@ const Environment = require("../Environment");
 
 const tests = [
     require("./self-eval-test.js"),
-    require("./arithmetics-test.js"),
+    require("./math-test.js"),
     require("./variables-test.js"),
     require("./block-test.js"),
     require("./if-test.js"),
     require("./while-test.js"),
+    require("./built-in-function-test.js"),
 ];
 
-const eva = new Eva(new Environment({
-    // pre-defined variables
-    null: null,
-
-    true: true,
-    false: false,
-
-    VERSION: '0.1',
-}));
+const eva = new Eva();
 
 tests.forEach(test => test(eva));
+
+// eva.eval(["print", '"hello,"', '"eva"']);
 
 console.log("all tests passed");
