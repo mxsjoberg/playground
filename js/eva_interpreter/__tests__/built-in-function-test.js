@@ -1,5 +1,5 @@
 const assert = require("assert");
-const assert = require("./test-util");
+const {test} = require("./test-util");
 
 module.exports = eva => {
 
