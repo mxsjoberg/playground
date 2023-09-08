@@ -151,6 +151,36 @@ class Eva {
             return this.eval(ifExp, env);
         }
 
+        // For-loop: (for init condition modifier body)
+        /*
+            syntactic sugar for: (begin init (while condition (begin body modifier)))
+        */
+
+        if (exp[0] === 'for') {
+            const whileExp = this._transformer.transformForToWhile(exp);
+            return this.eval(whileExp, env);
+        }
+
+        // Increment: (++ x)
+        /*
+            syntactic sugar for: (set x (+ x 1))
+        */
+
+        if (exp[0] === '++') {
+            const setExp = this._transformer.transformIncToSet(exp);
+            return this.eval(setExp, env);
+        }
+
+        // Decrement: (-- x)
+        /*
+            syntactic sugar for: (set x (- x 1))
+        */
+
+        if (exp[0] === '--') {
+            const setExp = this._transformer.transformDecToSet(exp);
+            return this.eval(setExp, env);
+        }
+
         // Lambda function: (lambda (x) (* x x))
 
         if (exp[0] === 'lambda') {
