@@ -37,6 +37,27 @@ class Transformer {
 
         return ifExp;
     }
+
+    // Transform 'for'-loop to 'while'-loop
+
+    transformForToWhile(exp) {
+        const [_tag, init, condition, modifier, body] = exp;
+        return ["begin", init, ["while", condition, ["begin", body, modifier]]];
+    }
+
+    // Transform '++'-expression to 'set'-expression
+
+    transformIncToSet(exp) {
+        const [_tag, name] = exp;
+        return ["set", name, ["+", name, 1]];
+    }
+
+    // Transform '--'-expression to 'set'-expression
+
+    transformDecToSet(exp) {
+        const [_tag, name] = exp;
+        return ["set", name, ["-", name, 1]];
+    }
 }
 
 module.exports = Transformer;
