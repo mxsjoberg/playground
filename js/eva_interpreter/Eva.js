@@ -1,5 +1,8 @@
 const Environment = require("./Environment");
 const Transformer = require("./Transformer");
+const evaParser = require("./parser/evaParser");
+// file system module
+const fs = require("fs");
 
 /*
     Eva interpreter
@@ -298,6 +301,41 @@ class Eva {
             const instanceEnv = this.eval(instance, env);
 
             return instanceEnv.lookup(name);
+        }
+
+        /*
+            Module declaration:
+
+                (module Math <body>)
+        */
+        if (exp[0] === 'module') {
+            const [_tag, name, body] = exp;
+            // module is named first-class environment
+            const moduleEnv = new Environment({}, env);
+
+            this._evalBody(body, moduleEnv);
+
+            return env.define(name, moduleEnv);
+        }
+
+        /*
+            Module import:
+
+                (import Math)
+        */
+        if (exp[0] === 'import') {
+            const [_tag, name] = exp;
+
+            const moduleSource = fs.readFileSync(
+                `${__dirname}/modules/${name}.eva`,
+                'utf-8',
+            );
+
+            const body = evaParser.parse(`(begin ${moduleSource})`);
+
+            const moduleExp = ['module', name, body];
+
+            return this.eval(moduleExp, this.global);
         }
 
         /*
