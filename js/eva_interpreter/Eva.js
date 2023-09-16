@@ -19,6 +19,15 @@ const fs = require("fs");
           ...
           | [if Exp Exp Exp]
           | [while Exp Exp]
+
+    chmod +x bin/eva
+    
+    ./bin/eva -e '(begin (var x 10) (print 10))'
+    ./bin/eva -e '(begin (var x 10) (print (* x 15)))'
+    ./bin/eva -e '(begin ((lambda (x) (* x x)) 2))'
+    ./bin/eva -e '(begin (print ((lambda (x) (* x x)) 2)))'
+
+    ./bin/eva -f ./test.eva
 */
 
 class Eva {
