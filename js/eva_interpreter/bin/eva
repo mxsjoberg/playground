@@ -1,0 +1,33 @@
+#! /usr/bin/env node
+
+'use strict';
+
+const fs = require("fs");
+
+const evaParser = require("../parser/evaParser");
+const Eva = require("../Eva");
+
+// evalGlobal wrapper with parser
+function evalGlobal(source, eva) {
+    const exp = evaParser.parse(source);
+    return eva.evalGlobal(exp);
+}
+
+function main(argv) {
+    const [_node, _path, mode, exp] = argv;
+
+    const eva = new Eva();
+
+    // direct expression
+    if (mode === '-e') {
+        return evalGlobal(exp, eva);
+    }
+
+    // Eva file
+    if (mode === '-f') {
+        const source = fs.readFileSync(mode, 'utf-8');
+        return evalGlobal(source, eva);
+    }
+}
+
+main(process.argv);
