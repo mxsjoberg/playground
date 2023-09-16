@@ -1,10 +1,7 @@
-// const assert = require("assert");
-
 const Environment = require("./Environment");
 const Transformer = require("./Transformer");
 
 /*
-
     Eva interpreter
 
     Exp ::= Number
@@ -19,24 +16,26 @@ const Transformer = require("./Transformer");
           ...
           | [if Exp Exp Exp]
           | [while Exp Exp]
-
 */
 
 class Eva {
 
-    // Create instance with global environment
-    
+    /*
+        Create instance with global environment `global`
+    */
     constructor(global = GlobalEnvironment) {
         this.global = global;
         this._transformer = new Transformer();
     }
 
-    // Evaluate expression in given environment
-    
+    /*
+        Evaluate expression `expr` in given environment `env`
+    */
     eval(exp, env = this.global) {
         
-        // Self-evaluating expressions
-        
+        /*
+            Self-evaluating expressions
+        */
         if (this._isNumber(exp)) {
             return exp;
         }
@@ -44,8 +43,9 @@ class Eva {
             return exp.slice(1, -1);
         }
         
-        // Math operators
-        
+        /*
+            Math operators (moved to environment)
+        */
         // if (exp[0] === '+') {
         //     return this.eval(exp[1], env) + this.eval(exp[2], env);
         // }
@@ -53,8 +53,9 @@ class Eva {
         //     return this.eval(exp[1], env) * this.eval(exp[2], env);
         // }
 
-        // Comparison operators
-
+        /*
+            Comparison operators (moved to environment)
+        */
         // if (exp[0] === '>') {
         //     return this.eval(exp[1], env) > this.eval(exp[2], env);
         // }
@@ -75,35 +76,41 @@ class Eva {
         //     return this.eval(exp[1], env) === this.eval(exp[2], env);
         // }
 
-        // Block
-
+        /*
+            Block
+        */
         if (exp[0] === 'begin') {
             const blockEnv = new Environment({}, env);
             return this._evalBlock(exp, blockEnv);
         }
         
-        // Variable declaration
-        
+        /*
+            Variable declaration
+        */
         if (exp[0] === 'var') {
             const [_, name, value] = exp;
             return env.define(name, this.eval(value, env));
         }
 
-        // Variable assignment
-
+        /*
+            Variable assignment
+        */
         if (exp[0] === 'set') {
             const [_, name, value] = exp;
             return env.assign(name, this.eval(value, env));
         }
 
-        // Variable access
+        /*
+            Variable access
+        */
 
         if (this._isVariableName(exp)) {
             return env.lookup(exp);
         }
 
-        // If-expression
-
+        /*
+            If-expression
+        */
         if (exp[0] === 'if') {
             const [_tag, condition, consequent, alternate] = exp;
             if (this.eval(condition, env)) {
@@ -112,8 +119,9 @@ class Eva {
             return this.eval(alternate, env);
         }
 
-        // While-expression
-
+        /*
+            While-expression
+        */
         if (exp[0] === 'while') {
             const [_tag, condition, body] = exp;
             let result;
@@ -123,11 +131,9 @@ class Eva {
             return result;
         }
 
-        // function declaration: (def square (x) (* x x))
         /*
-            syntactic sugar for: (var square (lambda (x) (* x x)))
+            Function declaration: (def square (x) (* x x)), syntactic sugar for: (var square (lambda (x) (* x x)))
         */
-
         if (exp[0] === 'def') {
             const [_tag, name, params, body] = exp;
             // including global env -> closure
@@ -141,48 +147,41 @@ class Eva {
             return this.eval(varExp, env);
         }
 
-        // Switch-expression: (switch (cond1, block1) ...)
         /*
-            syntactic sugar for nested if-expressions
+            Switch-expression: (switch (cond1, block1) ...), syntactic sugar for nested if-expressions
         */
-
         if (exp[0] === 'switch') {
             const ifExp = this._transformer.transformSwitchToIf(exp);
             return this.eval(ifExp, env);
         }
 
-        // For-loop: (for init condition modifier body)
         /*
-            syntactic sugar for: (begin init (while condition (begin body modifier)))
+            For-loop: (for init condition modifier body), syntactic sugar for: (begin init (while condition (begin body modifier)))
         */
-
         if (exp[0] === 'for') {
             const whileExp = this._transformer.transformForToWhile(exp);
             return this.eval(whileExp, env);
         }
 
-        // Increment: (++ x)
-        /*
-            syntactic sugar for: (set x (+ x 1))
+        /* 
+            Increment: (++ x), syntactic sugar for: (set x (+ x 1))
         */
-
         if (exp[0] === '++') {
             const setExp = this._transformer.transformIncToSet(exp);
             return this.eval(setExp, env);
         }
 
-        // Decrement: (-- x)
         /*
-            syntactic sugar for: (set x (- x 1))
+            Decrement: (-- x), syntactic sugar for: (set x (- x 1))
         */
-
         if (exp[0] === '--') {
             const setExp = this._transformer.transformDecToSet(exp);
             return this.eval(setExp, env);
         }
 
-        // Lambda function: (lambda (x) (* x x))
-
+        /*
+            Lambda function: (lambda (x) (* x x))
+        */
         if (exp[0] === 'lambda') {
             const [_tag, params, body] = exp;
             return {
@@ -192,22 +191,20 @@ class Eva {
             };
         }
 
-        // function call
         /*
-            (print "hello eva")
-            (+ x 5)
-            (> x y)
+            Function call:
+                
+                (print "hello eva")
+                (+ x 5)
+                (> x y)
         */
-
         if (Array.isArray(exp)) {
             const fn = this.eval(exp[0], env);
             const args = exp.slice(1).map(arg => this.eval(arg, env));
-
-            // native function
+            // native function (built-in)
             if (typeof fn === 'function') {
                 return fn(...args);
             }
-
             // user-defined function
             const activationRecord = {};
             fn.params.forEach((param, index) => {
@@ -219,19 +216,21 @@ class Eva {
             );
             return this._evalBody(fn.body, activationEnvironment);
         }
-        
+        /*
+            Not implemented
+        */
         throw `TODO: ${JSON.stringify(exp)}`;
     }
 
-    // Helpers
-
+    /*
+        Helpers
+    */
     _evalBody(body, env) {
         if (body[0] === "begin") {
             return this._evalBlock(body, env);
         }
         return this.eval(body, env);
     }
-
     _evalBlock(block, env) {
         let result;
         const [_tag, ...expressions] = block;
@@ -239,81 +238,64 @@ class Eva {
         expressions.forEach(exp => {
             result = this.eval(exp, env);
         });
-
         return result;
     }
-
     _isNumber(exp) {
         return typeof exp === "number";
     }
-
     _isString(exp) {
         return typeof exp === "string" && exp[0] === '"' && exp.slice(-1) === '"';
     }
-
     _isVariableName(exp) {
         return typeof exp === "string" && /^[+\-*/<>=a-zA-Z0-9_]+$/.test(exp);
     }
 }
 
-// Default Global Environment
-
+/*
+    Default Global Environment
+*/
 const GlobalEnvironment = new Environment({
     VERSION: '0.1',
-    
+    // system
     null: null,
     true: true,
     false: false,
-
     // operators
-
     '+'(op1, op2) {
         return op1 + op2;
     },
-
     '*'(op1, op2) {
         return op1 * op2;
     },
-
     '-'(op1, op2=null) {
         if (op2 == null) {
             return -op1;
         }
         return op1 - op2;
     },
-
     '/'(op1, op2) {
         return op1 / op2;
     },
-
     // comparison
-
     '>'(op1, op2) {
         return op1 > op2;
     },
-
     '<'(op1, op2) {
         return op1 < op2;
     },
-
     '>='(op1, op2) {
         return op1 >= op2;
     },
-
     '<='(op1, op2) {
         return op1 <= op2;
     },
-
     '='(op1, op2) {
         return op1 === op2;
     },
-
     // Console output
-
     print(...args) {
         console.log(...args);
     },
-
 });
 
 module.exports = Eva;
