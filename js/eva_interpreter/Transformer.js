@@ -1,23 +1,23 @@
 /*
-
-    AST transformer.
-
+    AST transformer
 */
 
 class Transformer {
 
-    // Transform 'def'-expression into variable declaration with lambda expression 
-
+    /*
+        Transform `def`-expression into variable declaration with lambda expression
+    */
     transformDefToVarLambda(exp) {
         const [_tag, name, params, body] = exp;
         return ["var", name, ["lambda", params, body]];
     }
 
-    // Transform 'switch'-expression to nested 'if'-expressions
-
+    /*
+        Transform `switch`-expression to nested `if`-expressions
+    */
     transformSwitchToIf(exp) {
         const [_tag, ...cases] = exp;
-        
+
         const ifExp = ["if", null, null, null];
         let current = ifExp;
         
@@ -38,22 +38,25 @@ class Transformer {
         return ifExp;
     }
 
-    // Transform 'for'-loop to 'while'-loop
-
+    /*
+        Transform `for`-loop to `while`-loop
+    */
     transformForToWhile(exp) {
         const [_tag, init, condition, modifier, body] = exp;
         return ["begin", init, ["while", condition, ["begin", body, modifier]]];
     }
 
-    // Transform '++'-expression to 'set'-expression
-
+    /*
+        Transform `++`-expression to `set`-expression
+    */
     transformIncToSet(exp) {
         const [_tag, name] = exp;
         return ["set", name, ["+", name, 1]];
     }
 
-    // Transform '--'-expression to 'set'-expression
-
+    /*
+        Transform `--`-expression to `set`-expression
+    */
     transformDecToSet(exp) {
         const [_tag, name] = exp;
         return ["set", name, ["-", name, 1]];
