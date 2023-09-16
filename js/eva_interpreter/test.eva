@@ -1,0 +1,7 @@
+(import Math)
+
+(var abs (prop Math abs))
+
+(var x (- 10))
+
+(print (abs x))
