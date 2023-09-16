@@ -15,6 +15,7 @@ const tests = [
     require("./for-test.js"),
     require("./inc-test.js"),
     require("./dec-test.js"),
+    require("./class-test.js"),
 ];
 
 const eva = new Eva();
