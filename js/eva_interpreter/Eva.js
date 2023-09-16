@@ -132,7 +132,13 @@ class Eva {
         }
 
         /*
-            Function declaration: (def square (x) (* x x)), syntactic sugar for: (var square (lambda (x) (* x x)))
+            Function declaration:
+
+                (def square (x) (* x x))
+
+            , syntactic sugar for:
+
+                (var square (lambda (x) (* x x)))
         */
         if (exp[0] === 'def') {
             const [_tag, name, params, body] = exp;
@@ -148,7 +154,11 @@ class Eva {
         }
 
         /*
-            Switch-expression: (switch (cond1, block1) ...), syntactic sugar for nested if-expressions
+            Switch-expression:
+
+                (switch (cond1, block1) ...)
+
+            , syntactic sugar for nested if-expressions
         */
         if (exp[0] === 'switch') {
             const ifExp = this._transformer.transformSwitchToIf(exp);
@@ -156,7 +166,13 @@ class Eva {
         }
 
         /*
-            For-loop: (for init condition modifier body), syntactic sugar for: (begin init (while condition (begin body modifier)))
+            For-loop:
+
+                (for init condition modifier body)
+
+            , syntactic sugar for:
+
+                (begin init (while condition (begin body modifier)))
         */
         if (exp[0] === 'for') {
             const whileExp = this._transformer.transformForToWhile(exp);
@@ -164,7 +180,13 @@ class Eva {
         }
 
         /* 
-            Increment: (++ x), syntactic sugar for: (set x (+ x 1))
+            Increment:
+
+                (++ x)
+
+            , syntactic sugar for:
+
+                (set x (+ x 1))
         */
         if (exp[0] === '++') {
             const setExp = this._transformer.transformIncToSet(exp);
@@ -172,7 +194,13 @@ class Eva {
         }
 
         /*
-            Decrement: (-- x), syntactic sugar for: (set x (- x 1))
+            Decrement:
+
+                (-- x)
+
+            , syntactic sugar for:
+
+                (set x (- x 1))
         */
         if (exp[0] === '--') {
             const setExp = this._transformer.transformDecToSet(exp);
@@ -180,7 +208,9 @@ class Eva {
         }
 
         /*
-            Lambda function: (lambda (x) (* x x))
+            Lambda function:
+
+                (lambda (x) (* x x))
         */
         if (exp[0] === 'lambda') {
             const [_tag, params, body] = exp;
