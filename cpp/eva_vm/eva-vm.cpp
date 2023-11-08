@@ -11,7 +11,7 @@ int main(int argc, char const *argv[]) {
 
 	log(result.number);
 
-	std::cout << "done" << std::endl;
+	// std::cout << "done" << std::endl;
 }
 
 /*
