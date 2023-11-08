@@ -51,8 +51,11 @@ public:
         // code = compiler->Compile(ast)
         
         // for testing only
-        constants.push_back(NUMBER(42));
-        code = { OP_CONST, 0, OP_HALT };
+        constants.push_back(NUMBER(10));
+        constants.push_back(NUMBER(3));
+        constants.push_back(NUMBER(10));
+
+        code = { OP_CONST, 0, OP_CONST, 1, OP_MUL, OP_CONST, 2, OP_SUB, OP_HALT };
 
         // init pointers
         ip = &code[0];
@@ -68,13 +71,45 @@ public:
     EvaValue eval() {
         for (;;) {
             auto opcode = READ_BYTE();
-            log(opcode);
+            // log(opcode);
             switch (opcode) {
                 case OP_HALT:
                     return pop();
                 case OP_CONST:
                     push(constants[READ_BYTE()]);
                     break;
+                case OP_ADD: {
+                    // LIFO
+                    auto right = pop().number;
+                    auto left = pop().number;
+                    auto result = left + right;
+                    push(NUMBER(result));
+                    break;
+                }
+                case OP_SUB: {
+                    // LIFO
+                    auto right = pop().number;
+                    auto left = pop().number;
+                    auto result = left - right;
+                    push(NUMBER(result));
+                    break;
+                }
+                case OP_MUL: {
+                    // LIFO
+                    auto right = pop().number;
+                    auto left = pop().number;
+                    auto result = left * right;
+                    push(NUMBER(result));
+                    break;
+                }
+                case OP_DIV: {
+                    // LIFO
+                    auto right = pop().number;
+                    auto left = pop().number;
+                    auto result = left / right;
+                    push(NUMBER(result));
+                    break;
+                }
                 default:
                     DIE << "unknown opcode: " << std::hex << opcode;
             }
