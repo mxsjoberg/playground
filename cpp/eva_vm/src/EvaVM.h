@@ -1,63 +1,94 @@
-#ifndef __EvaVM_h
-#define __EvaVM_h
+#ifndef EvaVM_h
+#define EvaVM_h
 
 #include <string>
 #include <vector>
+#include <array>
 
+#include "./Logger.h"
 #include "./OpCode.h"
+#include "./EvaValue.h"
 
-/**
- * Read current byte in bytecode and increment ip
- */
+// stack size limit
+#define STACK_LIMIT 512
+
 #define READ_BYTE() *ip++
 
-/**
- * Virtual machine for the Eva language
- */
 class EvaVM {
 public:
     EvaVM() {}
 
     /**
+     * Push a value to stack
+     * @param value The value to push
+     */
+     void push(const EvaValue& value) {
+        if ((size_t)(sp - stack.begin()) == STACK_LIMIT) {
+            DIE << "stack overflow\n";
+        }
+        *sp = value;
+        sp++;
+     }
+
+     /**
+      * Pop a value from stack
+      * @return The value popped
+      */
+     EvaValue pop() {
+        if (sp == stack.begin()) {
+            DIE << "empty stack\n";
+        }
+        sp--;
+        return *sp;
+     }
+
+    /**
      * Execute a program
      * @param program The program to execute
      */
-    void exec(const std::string &program) {
-        // parse program
+    EvaValue exec(const std::string &program) {
         // auto ast = parser->parse(program)
-
-        // compile to bytecode
         // code = compiler->Compile(ast)
+        
+        // for testing only
+        constants.push_back(NUMBER(42));
+        code = { OP_CONST, 0, OP_HALT };
 
-        code = { OP_HALT };
-
-        // set instruction pointer to 0
+        // init pointers
         ip = &code[0];
+        sp = &stack[0];
 
         return eval();
     }
 
-    /**
-     * Main eval loop
+    /*
+     * Evaluate a program
+     * @return The result of evaluation
      */
-    void eval() {
+    EvaValue eval() {
         for (;;) {
-            switch (READ_BYTE()) {
-                case OP_HALT: {
-                    return;
-                }
+            auto opcode = READ_BYTE();
+            log(opcode);
+            switch (opcode) {
+                case OP_HALT:
+                    return pop();
+                case OP_CONST:
+                    push(constants[READ_BYTE()]);
+                    break;
+                default:
+                    DIE << "unknown opcode: " << std::hex << opcode;
             }
         }
     }
 
-    /**
-     * Instruction pointer
-     */
+    // pointers
     uint8_t* ip;
-
-    /**
-     * Bytecode
-     */
+    EvaValue* sp;
+    // stack
+    std::array<EvaValue, STACK_LIMIT> stack;
+    // constant pool
+    std::vector<EvaValue> constants;
+    // bytecode
     std::vector<uint8_t> code;
 };
 
