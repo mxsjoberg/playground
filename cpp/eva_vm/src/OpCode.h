@@ -1,13 +1,8 @@
-/**
- * Instruction set for Eva VM
- */
+#ifndef OpCode_h
+#define OpCode_h
 
-#ifndef __OpCode_h
-#define __OpCode_h
-
-/**
- * Stop the program
- */
 #define OP_HALT 0x00
+#define OP_CONST 0x01
+#define OP_ADD 0x02
 
 #endif
