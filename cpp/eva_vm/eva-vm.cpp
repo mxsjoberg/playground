@@ -1,15 +1,17 @@
-#include "src/EvaVM.h"
+#include <iostream>
 
-/**
- * Eva VM main executable
- */
+#include "src/Logger.h"
+#include "src/EvaVM.h"
 
 int main(int argc, char const *argv[]) {
 	EvaVM vm;
-
-	vm.exec(R"(
+	auto result = vm.exec(R"(
 		42
 	)");
+
+	log(result.number);
+
+	std::cout << "done" << std::endl;
 }
 
 /*
