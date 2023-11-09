@@ -9,7 +9,7 @@ int main(int argc, char const *argv[]) {
 		42
 	)");
 
-	log(result.number);
+	log(AS_STRING(result));
 
 	// std::cout << "done" << std::endl;
 }
