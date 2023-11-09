@@ -51,11 +51,14 @@ public:
         // code = compiler->Compile(ast)
         
         // for testing only
-        constants.push_back(NUMBER(10));
-        constants.push_back(NUMBER(3));
-        constants.push_back(NUMBER(10));
+        // constants.push_back(NUMBER(10));
+        // constants.push_back(NUMBER(3));
+        // constants.push_back(NUMBER(10));
+        // code = { OP_CONST, 0, OP_CONST, 1, OP_MUL, OP_CONST, 2, OP_SUB, OP_HALT };
 
-        code = { OP_CONST, 0, OP_CONST, 1, OP_MUL, OP_CONST, 2, OP_SUB, OP_HALT };
+        constants.push_back(ALLOC_STRING("hello "));
+        constants.push_back(ALLOC_STRING("eva"));
+        code = { OP_CONST, 0, OP_CONST, 1, OP_ADD, OP_HALT };
 
         // init pointers
         ip = &code[0];
@@ -80,10 +83,20 @@ public:
                     break;
                 case OP_ADD: {
                     // LIFO
-                    auto right = pop().number;
-                    auto left = pop().number;
-                    auto result = left + right;
-                    push(NUMBER(result));
+                    // auto right = pop().number;
+                    // auto left = pop().number;
+                    // auto result = left + right;
+                    // push(NUMBER(result));
+                    auto right = pop();
+                    auto left = pop();
+                    // numbers
+                    if (IS_NUMBER(right) && IS_NUMBER(left)) {
+                        push(NUMBER(AS_NUMBER(left) + AS_NUMBER(right)));
+                    }
+                    // strings
+                    else if (IS_STRING(right) && IS_STRING(left)) {
+                        push(ALLOC_STRING(AS_STRING(left) + AS_STRING(right)));
+                    }
                     break;
                 }
                 case OP_SUB: {
