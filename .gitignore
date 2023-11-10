@@ -12,3 +12,4 @@ python/dead_code_elimination.py
 cpp/eva_vm/eva-vm.dSYM/Contents/Info.plist
 cpp/eva_vm/eva-vm.dSYM/Contents/Resources/DWARF/eva-vm
 cpp/eva_vm/eva-vm
+cpp/eva_llvm/eva-llvm
