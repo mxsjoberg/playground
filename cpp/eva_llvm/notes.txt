@@ -1,30 +1,30 @@
 install llvm-14 on mac:
 
-	$ brew install llvm@14
+    $ brew install llvm@14
 
 list llvm targets:
-	
-	$ llc --version
+    
+    $ llc --version
 
 compile test.cpp to llvm ir (test.ll):
 
-	$ clang++ -S -emit-llvm test.cpp
+    $ clang++ -S -emit-llvm test.cpp
 
 test.ll:
 
-	define i32 @main() {
-  		ret i32 42
-	}
+    define i32 @main() {
+        ret i32 42
+    }
 
 interpret test.ll using lli:
 
-	$ lli test.ll; echo $?
-	> 42
+    $ lli test.ll; echo $?
+    > 42
 
 assemble test.ll with llvm-as (test.bc):
-	
-	$ llvm-as test.ll
+    
+    $ llvm-as test.ll
 
 disassemble test.bc with llvm-dis (test_dis.ll):
 
-	$ llvm-dis test.bc -o test_dis.ll
+    $ llvm-dis test.bc -o test_dis.ll
