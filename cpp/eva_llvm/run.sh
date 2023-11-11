@@ -6,3 +6,6 @@ clang++ eva-llvm.cpp -o eva-llvm $(llvm-config --cxxflags --ldflags --system-lib
 
 # run
 lli ./out.ll
+
+# print result
+echo $?
