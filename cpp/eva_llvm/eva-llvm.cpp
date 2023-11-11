@@ -3,16 +3,14 @@
 #import "./src/EvaLLVM.h"
 
 int main(int argc, char const *argv[]) {
+    // example program
+    std::string program = R"(
+        42
+    )";
+    // compiler instance
+    EvaLLVM vm;
+    // generate LLVM IR
+    vm.exec(program);
 
-	std::string program = R"(
-		42
-	)";
-
-	EvaLLVM vm;
-
-	vm.exec(program);
-	// ; ModuleID = 'EvaLLVM'
-	// source_filename = "EvaLLVM"
-
-	return 0;
+    return 0;
 }
