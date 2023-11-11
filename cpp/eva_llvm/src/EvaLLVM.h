@@ -16,6 +16,8 @@ public:
         context = std::make_unique<llvm::LLVMContext>();
         module = std::make_unique<llvm::Module>("EvaLLVM", *context);
         builder = std::make_unique<llvm::IRBuilder<>>(*context);
+        // external functions
+        setupExternalFunctions();
     }
     // execute program
     void exec(const std::string& program) {
@@ -48,23 +50,51 @@ private:
         );
 
         // compile main body
-        auto result = gen(/* TODO ast */);
+        gen(/* TODO ast */);
 
-        // create return instruction
-        auto i32Result = builder->CreateIntCast(
-            // value
-            result,
-            // type
-            builder->getInt32Ty(),
-            // isSigned
-            true
-        );
-        builder->CreateRet(i32Result);
+        // test only : create return instruction
+        // auto i32Result = builder->CreateIntCast(
+        //     // value
+        //     result,
+        //     // type
+        //     builder->getInt32Ty(),
+        //     // isSigned
+        //     true
+        // );
+        builder->CreateRet(builder->getInt32(0));
     }
 
     // main compile loop
     llvm::Value* gen(/* TODO ast */) {
-        return builder->getInt32(42);
+        // return builder->getInt32(42);
+        auto str = builder->CreateGlobalStringPtr("hello llvm\n");
+        // printf
+        auto printfFn = module->getFunction("printf");
+        // args
+        std::vector<llvm::Value*> args;
+
+        return builder->CreateCall(printfFn, str);
+    }
+
+    // declare external functions
+    void setupExternalFunctions() {
+        // int printf(char* format, ...)
+        module->getOrInsertFunction(
+            // name
+            "printf",
+            // type
+            llvm::FunctionType::get(
+                // return type
+                builder->getInt32Ty(),
+                // args
+                {
+                    builder->getInt8PtrTy()
+                },
+                // isVarArg
+                true
+            )
+        );
+
     }
 
     // create function
