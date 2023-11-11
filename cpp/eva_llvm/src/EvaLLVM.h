@@ -11,10 +11,13 @@
 
 class EvaLLVM {
 public:
+    // constructor
     EvaLLVM() {
-        moduleInit();
+        context = std::make_unique<llvm::LLVMContext>();
+        module = std::make_unique<llvm::Module>("EvaLLVM", *context);
+        builder = std::make_unique<llvm::IRBuilder<>>(*context);
     }
-
+    // execute program
     void exec(const std::string& program) {
         // TODO parse to AST
         
@@ -95,16 +98,9 @@ private:
         llvm::raw_fd_ostream outLL(filename, error);
         module->print(outLL, nullptr);
     }
-    // init module
-    void moduleInit() {
-        context = std::make_unique<llvm::LLVMContext>();
-        module = std::make_unique<llvm::Module>("EvaLLVM", *context);
-        builder = std::make_unique<llvm::IRBuilder<>>(*context);
-    }
 
     // LLVM function
     llvm::Function* fn;
-
     // LLVM context
     std::unique_ptr<llvm::LLVMContext> context;
     // LLVM module
