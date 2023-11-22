@@ -20,3 +20,4 @@ rust/rust-macros/target/*
 *.out
 cpp/kaleidoscope/a.out.dSYM/*
 cpp/kaleidoscope/parser.dSYM/*
+cpp/kaleidoscope/parser
