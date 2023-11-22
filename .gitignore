@@ -13,3 +13,7 @@ cpp/eva_vm/eva-vm.dSYM/Contents/Info.plist
 cpp/eva_vm/eva-vm.dSYM/Contents/Resources/DWARF/eva-vm
 cpp/eva_vm/eva-vm
 cpp/eva_llvm/eva-llvm
+*.lock
+rust/advanced-rust-in-60-seconds/target/*
+rust/rust-in-60-seconds/target/*
+rust/rust-macros/target/*
