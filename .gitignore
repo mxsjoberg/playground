@@ -17,3 +17,6 @@ cpp/eva_llvm/eva-llvm
 rust/advanced-rust-in-60-seconds/target/*
 rust/rust-in-60-seconds/target/*
 rust/rust-macros/target/*
+*.out
+cpp/kaleidoscope/a.out.dSYM/*
+cpp/kaleidoscope/parser.dSYM/*
