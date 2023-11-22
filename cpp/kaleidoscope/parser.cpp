@@ -1,6 +1,4 @@
-/*
-    https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl01.html
-    
+/*    
     # Compute the x'th fibonacci number.
     def fib(x)
         if x < 3 then
@@ -12,6 +10,8 @@
 */
 
 // clang++ -g -O3 parser.cpp -o parser `llvm-config --cxxflags`; ./parser
+
+// https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl03.html
 
 #import <cctype>
 #import <cstdio>
