@@ -1,17 +1,4 @@
-// https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl03.html
-
-/*    
-    # Compute the x'th fibonacci number.
-    def fib(x)
-        if x < 3 then
-            1
-        else
-            fib(x-1)+fib(x-2)
-    # This expression will compute the 40th number.
-    fib(40)
-*/
-
-// clang++ -g -O3 parser.cpp -o parser `llvm-config --cxxflags --ldflags --system-libs --libs core`; ./parser
+// https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl04.html
 
 /*
     ready> 4+5;
@@ -61,9 +48,6 @@
       %calltmp = call double @cos()
       ret double %calltmp
     }
-*/
-
-/*
 */
 
 #include <algorithm>
@@ -582,6 +566,7 @@ static void main_loop() {
 
 // main driver
 // ---------------------------------------
+// clang++ -g -O3 parser.cpp -o parser `llvm-config --cxxflags --ldflags --system-libs --libs core`; ./parser
 int main() {
     // standard precedence for binary operators
     binop_precedence['<'] = 10;
