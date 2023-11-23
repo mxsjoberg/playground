@@ -44,7 +44,7 @@ static int next_token() {
     while (isspace(current_char)) {
         current_char = getchar();
     }
-    // identifier: [a-zA-Z][a-zA-Z0-9]*
+    // identifier: [a-zA-Z]*
     if (isalpha(current_char)) {
         identifier = current_char;
         while (isalnum(current_char = getchar())) {
