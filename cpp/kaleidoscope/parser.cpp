@@ -1,4 +1,4 @@
-// https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl04.html
+// https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl05.html
 
 /*
     ready> 4+5;
@@ -51,7 +51,9 @@
 */
 
 #include <algorithm>
+#include <cassert>
 #include <cctype>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <map>
@@ -66,10 +68,22 @@
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
+// #include "llvm/Passes/PassBuilder.h"
+// #include "llvm/Passes/StandardInstrumentations.h"
+// #include "llvm/Support/TargetSelect.h"
+// #include "llvm/Target/TargetMachine.h"
+// #include "llvm/Transforms/InstCombine/InstCombine.h"
+// #include "llvm/Transforms/Scalar.h"
+// #include "llvm/Transforms/Scalar/GVN.h"
+// #include "llvm/Transforms/Scalar/Reassociate.h"
+// #include "llvm/Transforms/Scalar/SimplifyCFG.h"
+
+// #include "KaleidoscopeJIT.h"
 
 // lexer
 // ---------------------------------------
@@ -81,6 +95,10 @@ enum Token {
     // primary
     tok_identifier = -4,
     tok_number = -5,
+    // control
+    tok_if = -6,
+    tok_then = -7,
+    tok_else = -8,
 };
 
 static std::string identifier; // tok_identifier
@@ -99,12 +117,11 @@ static int next_token() {
             identifier += current_char;
         }
         // keywords
-        if (identifier == "def") {
-            return tok_def;
-        }
-        if (identifier == "extern") {
-            return tok_extern;
-        }
+        if (identifier == "def") { return tok_def; }
+        if (identifier == "extern") { return tok_extern; }
+        if (identifier == "if") { return tok_if; }
+        if (identifier == "then") { return tok_then; }
+        if (identifier == "else") { return tok_else; }
         return tok_identifier;
     }
     // number: [0-9.]+
@@ -184,6 +201,15 @@ public:
     // llvm
     llvm::Value *codegen() override;
 };
+
+class IfExprAST : public ExprAST {
+    std::unique_ptr<ExprAST> cond, then, else_;
+public:
+    IfExprAST(std::unique_ptr<ExprAST> cond, std::unique_ptr<ExprAST> then, std::unique_ptr<ExprAST> else_)
+        : cond(std::move(cond)), then(std::move(then)), else_(std::move(else_)) {}
+    // llvm
+    llvm::Value *codegen() override;
+}; 
 
 // functions
 class PrototypeAST {
@@ -290,6 +316,32 @@ static std::unique_ptr<ExprAST> parse_identifier_expr() {
     return std::make_unique<CallExprAST>(id, std::move(args));
 }
 
+// ifexpr ::= 'if' expression 'then' expression 'else' expression
+static std::unique_ptr<ExprAST> parse_if_expr() {
+    get_next_token(); // consume if
+    auto cond = parse_expression();
+    if (!cond) {
+        return nullptr;
+    }
+    if (current_token != tok_then) {
+        return log_error("expected then");
+    }
+    get_next_token(); // consume then
+    auto then = parse_expression();
+    if (!then) {
+        return nullptr;
+    }
+    if (current_token != tok_else) {
+        return log_error("expected else");
+    }
+    get_next_token(); // consume else
+    auto else_ = parse_expression();
+    if (!else_) {
+        return nullptr;
+    }
+    return std::make_unique<IfExprAST>(std::move(cond), std::move(then), std::move(else_));
+}
+
 // primary ::= identifierexpr | numberexpr | parenexpr
 static std::unique_ptr<ExprAST> parse_primary() {
     switch (current_token) {
@@ -301,6 +353,8 @@ static std::unique_ptr<ExprAST> parse_primary() {
         return parse_number_expr();
     case '(':
         return parse_paren_expr();
+    case tok_if:
+        return parse_if_expr();
     }
 }
 
@@ -396,6 +450,17 @@ static std::unique_ptr<llvm::LLVMContext> context;
 static std::unique_ptr<llvm::Module> mod;
 static std::unique_ptr<llvm::IRBuilder<>> builder;
 static std::map<std::string, llvm::Value *> named_values;
+// passes
+// static std::unique_ptr<llvm::FunctionPassManager> function_pass_manager;
+// static std::unique_ptr<llvm::LoopAnalysisManager> loop_analysis_manager;
+// static std::unique_ptr<llvm::FunctionAnalysisManager> function_analysis_manager;
+// static std::unique_ptr<llvm::CGSCCAnalysisManager> cgscc_analysis_manager;
+// static std::unique_ptr<llvm::ModuleAnalysisManager> module_analysis_manager;
+// static std::unique_ptr<llvm::PassInstrumentationCallbacks> pass_instrumentation_callbacks;
+// static std::unique_ptr<llvm::StandardInstrumentations> standard_instrumentations;
+// jit
+// static std::unique_ptr<llvm::orc::KaleidoscopeJIT> jit;
+
 
 llvm::Value *log_error_value(const char *str) {
     log_error(str);
@@ -456,6 +521,46 @@ llvm::Value *CallExprAST::codegen() {
     return builder->CreateCall(callee_function, argsv, "calltmp");
 }
 
+llvm::Value *IfExprAST::codegen() {
+    llvm::Value *cond_value = cond->codegen();
+    if (!cond_value) {
+        return nullptr;
+    }
+    // convert condition to bool
+    cond_value = builder->CreateFCmpONE(cond_value, llvm::ConstantFP::get(*context, llvm::APFloat(0.0)), "ifcond");
+    // create blocks
+    llvm::Function *function = builder->GetInsertBlock()->getParent();
+    llvm::BasicBlock *then_block = llvm::BasicBlock::Create(*context, "then", function);
+    llvm::BasicBlock *else_block = llvm::BasicBlock::Create(*context, "else"); // not added to function
+    llvm::BasicBlock *merge_block = llvm::BasicBlock::Create(*context, "ifcont");
+    builder->CreateCondBr(cond_value, then_block, else_block);
+    // emit then block
+    builder->SetInsertPoint(then_block);
+    llvm::Value *then_value = then->codegen();
+    if (!then_value) {
+        return nullptr;
+    }
+    builder->CreateBr(merge_block);
+    then_block = builder->GetInsertBlock();
+    // emit else block
+    function->insert(function->end(), else_block); // added to function
+    builder->SetInsertPoint(else_block);
+    llvm::Value *else_value = else_->codegen();
+    if (!else_value) {
+        return nullptr;
+    }
+    builder->CreateBr(merge_block);
+    else_block = builder->GetInsertBlock();
+    // emit merge block
+    function->insert(function->end(), merge_block); // added to function
+    builder->SetInsertPoint(merge_block);
+    // llvm ssa
+    llvm::PHINode *phi_node = builder->CreatePHI(llvm::Type::getDoubleTy(*context), 2, "iftmp");
+    phi_node->addIncoming(then_value, then_block);
+    phi_node->addIncoming(else_value, else_block);
+    return phi_node;
+}
+
 llvm::Function *PrototypeAST::codegen() {
     // function type : double(double, double)
     std::vector<llvm::Type *> doubles(args.size(), llvm::Type::getDoubleTy(*context));
@@ -494,6 +599,8 @@ llvm::Function *FunctionAST::codegen() {
         builder->CreateRet(ret);
         // verify
         llvm::verifyFunction(*function); // check consistency
+        // optimize
+        // function_pass_manager->run(*function, *function_analysis_manager);
         return function;
     }
     // error
@@ -575,13 +682,43 @@ int main() {
     binop_precedence['*'] = 40;
 
     // first token
-    fprintf(stderr, "ready> ");
+    // fprintf(stderr, "ready> ");
     get_next_token();
 
     // init llvm
     context = std::make_unique<llvm::LLVMContext>();
     mod = std::make_unique<llvm::Module>("llvm codegen", *context);
+    // data layout
+    // mod->setDataLayout(jit->getDataLayout());
+    // ir builder
     builder = std::make_unique<llvm::IRBuilder<>>(*context);
+
+    // llvm optimizations
+    // function_pass_manager = std::make_unique<llvm::FunctionPassManager>();
+    // loop_analysis_manager = std::make_unique<llvm::LoopAnalysisManager>();
+    // function_analysis_manager = std::make_unique<llvm::FunctionAnalysisManager>();
+    // cgscc_analysis_manager = std::make_unique<llvm::CGSCCAnalysisManager>();
+    // module_analysis_manager = std::make_unique<llvm::ModuleAnalysisManager>();
+    // pass_instrumentation_callbacks = std::make_unique<llvm::PassInstrumentationCallbacks>();
+    // standard_instrumentations = std::make_unique<llvm::StandardInstrumentations>(*context, true); // true for debugging
+    
+    // standard_instrumentations->registerCallbacks(*pass_instrumentation_callbacks, module_analysis_manager.get());
+
+    // peephole optimizations
+    // function_pass_manager->addPass(llvm::Passes::createFunctionToLoopPassAdaptor(llvm::Passes::createInstructionCombiningPass()));
+    // reassociate expressions
+    // function_pass_manager->addPass(llvm::Passes::createFunctionToLoopPassAdaptor(llvm::Passes::createReassociatePass()));
+    // eliminate common subexpressions
+    // function_pass_manager->addPass(llvm::Passes::createFunctionToLoopPassAdaptor(llvm::Passes::createNewGVNPass()));
+    // simplify control flow graph
+    // function_pass_manager->addPass(llvm::Passes::createFunctionToLoopPassAdaptor(llvm::Passes::createCFGSimplificationPass()));
+
+    // register analysis
+    // llvm::PassBuilder pass_builder;
+    // pass_builder.registerModuleAnalyses(*module_analysis_manager);
+    // pass_builder.registerFunctionAnalyses(*function_analysis_manager);
+    // pass_builder.crossRegisterProxies(*loop_analysis_manager, *function_analysis_manager, *cgscc_analysis_manager, *module_analysis_manager);
+
 
     // run main loop
     main_loop();
