@@ -576,6 +576,7 @@ static std::unique_ptr<PrototypeAST> parse_extern() {
 static std::unique_ptr<llvm::LLVMContext> context;
 static std::unique_ptr<llvm::Module> mod;
 static std::unique_ptr<llvm::IRBuilder<>> builder;
+
 static std::map<std::string, llvm::Value *> named_values;
 static std::map<std::string, std::unique_ptr<PrototypeAST>> function_prototypes;
 // passes
