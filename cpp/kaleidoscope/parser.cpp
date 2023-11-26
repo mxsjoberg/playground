@@ -1,4 +1,4 @@
-// https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl05.html
+// https://releases.llvm.org/14.0.0/docs/tutorial/MyFirstLanguageFrontend/LangImpl06.html
 
 /*
 ready> 4+5;
@@ -80,6 +80,39 @@ ready> def baz(x) if x then foo() else bar();
     }
 */
 
+/*
+ready> extern putchard(char);
+    
+    declare double @putchard(double)
+
+ready> def printstar(n) for i = 1, i < n, 1.0 in putchard(42);
+
+    define double @printstar(double %n) {
+    entry:
+      br label %loop
+
+    loop:                                             ; preds = %loop, %entry
+      %i = phi double [ 1.000000e+00, %entry ], [ %nextvar, %loop ]
+      %calltmp = call double @putchard()
+      %nextvar = fadd double %i, 1.000000e+00
+      %cmptmp = fcmp ult double %i, %n
+      %booltmp = uitofp i1 %cmptmp to double
+      %loopcond = fcmp one double %booltmp, 0.000000e+00
+      br i1 %loopcond, label %loop, label %afterloop
+
+    afterloop:                                        ; preds = %loop
+      ret double 0.000000e+00
+    }
+
+ready> printstar(10);
+
+    define double @__anon_expr() {
+    entry:
+      %calltmp = call double @printstar()
+      ret double %calltmp
+    }
+*/
+
 #include <algorithm>
 #include <cassert>
 #include <cctype>
@@ -131,6 +164,8 @@ enum Token {
     tok_if = -6,
     tok_then = -7,
     tok_else = -8,
+    tok_for = -9,
+    tok_in = -10,
 };
 
 static std::string identifier; // tok_identifier
@@ -154,6 +189,9 @@ static int next_token() {
         if (identifier == "if") { return tok_if; }
         if (identifier == "then") { return tok_then; }
         if (identifier == "else") { return tok_else; }
+        if (identifier == "for") { return tok_for; }
+        if (identifier == "in") { return tok_in; }
+
         return tok_identifier;
     }
     // number: [0-9.]+
@@ -242,6 +280,16 @@ public:
     // llvm
     llvm::Value *codegen() override;
 }; 
+
+class ForExprAST : public ExprAST {
+    std::string var_name;
+    std::unique_ptr<ExprAST> start, end, step, body;
+public:
+    ForExprAST(const std::string &var_name, std::unique_ptr<ExprAST> start, std::unique_ptr<ExprAST> end, std::unique_ptr<ExprAST> step, std::unique_ptr<ExprAST> body)
+        : var_name(var_name), start(std::move(start)), end(std::move(end)), step(std::move(step)), body(std::move(body)) {}
+    // llvm
+    llvm::Value *codegen() override;
+};
 
 // functions
 class PrototypeAST {
@@ -374,6 +422,51 @@ static std::unique_ptr<ExprAST> parse_if_expr() {
     return std::make_unique<IfExprAST>(std::move(cond), std::move(then), std::move(else_));
 }
 
+// forexpr ::= 'for' identifier '=' expr ',' expr (',' expr)? 'in' expression
+static std::unique_ptr<ExprAST> parse_for_expr() {
+    get_next_token(); // consume for
+    if (current_token != tok_identifier) {
+        return log_error("expected identifier after for");
+    }
+    std::string id = identifier;
+    get_next_token(); // consume identifier
+    if (current_token != '=') {
+        return log_error("expected '=' after for");
+    }
+    get_next_token(); // consume '='
+    auto start = parse_expression();
+    if (!start) {
+        return nullptr;
+    }
+    if (current_token != ',') {
+        return log_error("expected ',' after for start value");
+    }
+    get_next_token(); // consume ','
+    auto end = parse_expression();
+    if (!end) {
+        return nullptr;
+    }
+    // optional step value
+    std::unique_ptr<ExprAST> step;
+    if (current_token == ',') {
+        get_next_token(); // consume ','
+        step = parse_expression();
+        if (!step) {
+            return nullptr;
+        }
+    }
+    if (current_token != tok_in) {
+        return log_error("expected 'in' after for");
+    }
+    get_next_token(); // consume in
+    auto body = parse_expression();
+    if (!body) {
+        return nullptr;
+    }
+    return std::make_unique<ForExprAST>(id, std::move(start), std::move(end), std::move(step), std::move(body));
+
+}
+
 // primary ::= identifierexpr | numberexpr | parenexpr
 static std::unique_ptr<ExprAST> parse_primary() {
     switch (current_token) {
@@ -387,6 +480,8 @@ static std::unique_ptr<ExprAST> parse_primary() {
         return parse_paren_expr();
     case tok_if:
         return parse_if_expr();
+    case tok_for:
+        return parse_for_expr();
     }
 }
 
@@ -606,6 +701,67 @@ llvm::Value *IfExprAST::codegen() {
     phi_node->addIncoming(then_value, then_block);
     phi_node->addIncoming(else_value, else_block);
     return phi_node;
+}
+
+llvm::Value *ForExprAST::codegen() {
+    // emit start code
+    llvm::Value *start_value = start->codegen();
+    if (!start_value) {
+        return nullptr;
+    }
+    // create basic block
+    llvm::Function *function = builder->GetInsertBlock()->getParent();
+    llvm::BasicBlock *preheader_block = builder->GetInsertBlock();
+    llvm::BasicBlock *loop_block = llvm::BasicBlock::Create(*context, "loop", function);
+    // insert branch
+    builder->CreateBr(loop_block);
+    // emit loop block
+    builder->SetInsertPoint(loop_block);
+    // create phi node
+    llvm::PHINode *variable = builder->CreatePHI(llvm::Type::getDoubleTy(*context), 2, var_name.c_str());
+    variable->addIncoming(start_value, preheader_block);
+    // save old variable
+    llvm::Value *old_value = named_values[var_name];
+    named_values[var_name] = variable;
+    // emit body
+    if (!body->codegen()) {
+        return nullptr;
+    }
+    // emit step
+    llvm::Value *step_value = nullptr;
+    if (step) {
+        step_value = step->codegen();
+        if (!step_value) {
+            return nullptr;
+        }
+    } else {
+        step_value = llvm::ConstantFP::get(*context, llvm::APFloat(1.0));
+    }
+    llvm::Value *next_value = builder->CreateFAdd(variable, step_value, "nextvar");
+    // end condition
+    llvm::Value *end_condition = end->codegen();
+    if (!end_condition) {
+        return nullptr;
+    }
+    // convert condition to bool
+    end_condition = builder->CreateFCmpONE(end_condition, llvm::ConstantFP::get(*context, llvm::APFloat(0.0)), "loopcond");
+    // create loop block
+    llvm::BasicBlock *loop_end_block = builder->GetInsertBlock();
+    llvm::BasicBlock *after_block = llvm::BasicBlock::Create(*context, "afterloop", function);
+    // insert branch
+    builder->CreateCondBr(end_condition, loop_block, after_block);
+    // emit after block
+    builder->SetInsertPoint(after_block);
+    // add incoming
+    variable->addIncoming(next_value, loop_end_block);
+    // restore old variable
+    if (old_value) {
+        named_values[var_name] = old_value;
+    } else {
+        named_values.erase(var_name);
+    }
+    // return null
+    return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*context));
 }
 
 llvm::Function *PrototypeAST::codegen() {
