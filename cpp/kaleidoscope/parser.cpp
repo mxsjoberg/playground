@@ -1,21 +1,21 @@
 // https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl05.html
 
 /*
-    ready> 4+5;
-    handle_toplevel_expression
-    define double @0() {
+ready> 4+5;
+
+    define double @__anon_expr() {
     entry:
       ret double 9.000000e+00
     }
 */
 
 /*
-    ready> def foo(a b) a*a + 2*a*b + b*b;
-    handle_definition
+ready> def foo(a b) a*a + 2*a*b + b*b;
+
     define double @foo(double %a, double %b) {
     entry:
-      %multmp = fmul double %b, %b
-      %multmp1 = fmul double 2.000000e+00, %b
+      %multmp = fmul double %a, %a
+      %multmp1 = fmul double 2.000000e+00, %a
       %multmp2 = fmul double %multmp1, %b
       %addtmp = fadd double %multmp, %multmp2
       %multmp3 = fmul double %b, %b
@@ -25,8 +25,8 @@
 */
 
 /*
-    ready> def bar(a) foo(a, 4.0) + bar(31337);
-    handle_definition
+ready> def bar(a) foo(a, 4.0) + bar(31337);
+
     define double @bar(double %a) {
     entry:
       %calltmp = call double @foo()
@@ -37,16 +37,46 @@
 */
 
 /*
-    ready> extern cos(x);
-    handle_extern
+ready> extern cos(x);
+    
     declare double @cos(double)
 
-    ready> cos(1.234);
-    handle_toplevel_expression
+ready> cos(1.234);
+    
     define double @__anon_expr() {
     entry:
       %calltmp = call double @cos()
       ret double %calltmp
+    }
+*/
+
+/*
+ready> extern foo();
+    
+    declare double @foo()
+    
+ready> extern bar();
+    
+    declare double @bar()
+    
+ready> def baz(x) if x then foo() else bar();
+
+    define double @baz(double %x) {
+    entry:
+      %ifcond = fcmp one double %x, 0.000000e+00
+      br i1 %ifcond, label %then, label %else
+
+    then:                                             ; preds = %entry
+      %calltmp = call double @foo()
+      br label %ifcont
+
+    else:                                             ; preds = %entry
+      %calltmp1 = call double @bar()
+      br label %ifcont
+
+    ifcont:                                           ; preds = %else, %then
+      %iftmp = phi double [ %calltmp, %then ], [ %calltmp1, %else ]
+      ret double %iftmp
     }
 */
 
@@ -59,6 +89,8 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <sstream>
+#include <iostream>
 #include <vector>
 // llvm
 #include "llvm/ADT/APFloat.h"
@@ -157,7 +189,7 @@ static int next_token() {
 
 // ast
 // ---------------------------------------
-namespace {
+namespace { // start anonymous namespace
 
 class ExprAST {
 public:
@@ -450,6 +482,7 @@ static std::unique_ptr<llvm::LLVMContext> context;
 static std::unique_ptr<llvm::Module> mod;
 static std::unique_ptr<llvm::IRBuilder<>> builder;
 static std::map<std::string, llvm::Value *> named_values;
+static std::map<std::string, std::unique_ptr<PrototypeAST>> function_prototypes;
 // passes
 // static std::unique_ptr<llvm::FunctionPassManager> function_pass_manager;
 // static std::unique_ptr<llvm::LoopAnalysisManager> loop_analysis_manager;
@@ -461,9 +494,23 @@ static std::map<std::string, llvm::Value *> named_values;
 // jit
 // static std::unique_ptr<llvm::orc::KaleidoscopeJIT> jit;
 
-
 llvm::Value *log_error_value(const char *str) {
     log_error(str);
+    return nullptr;
+}
+
+// get function helper
+llvm::Function *get_function(const std::string &name) {
+    // check if function is already in module
+    if (auto *function = mod->getFunction(name)) {
+        return function;
+    }
+    // check if function is in prototype
+    auto prototype = function_prototypes.find(name);
+    if (prototype != function_prototypes.end()) {
+        return prototype->second->codegen();
+    }
+    // not found
     return nullptr;
 }
 
@@ -472,9 +519,9 @@ llvm::Value *NumberExprAST::codegen() {
 }
 
 llvm::Value *VariableExprAST::codegen() {
-    llvm::Value *named_value = named_values[identifier];
+    llvm::Value *named_value = named_values[id];
     if (!named_value) {
-        return log_error_value("unknown variable name");
+        return log_error_value("unknown variable id");
     }
     return named_value;
 }
@@ -532,7 +579,7 @@ llvm::Value *IfExprAST::codegen() {
     llvm::Function *function = builder->GetInsertBlock()->getParent();
     llvm::BasicBlock *then_block = llvm::BasicBlock::Create(*context, "then", function);
     llvm::BasicBlock *else_block = llvm::BasicBlock::Create(*context, "else"); // not added to function
-    llvm::BasicBlock *merge_block = llvm::BasicBlock::Create(*context, "ifcont");
+    llvm::BasicBlock *merge_block = llvm::BasicBlock::Create(*context, "ifcont"); // not added to function
     builder->CreateCondBr(cond_value, then_block, else_block);
     // emit then block
     builder->SetInsertPoint(then_block);
@@ -543,7 +590,7 @@ llvm::Value *IfExprAST::codegen() {
     builder->CreateBr(merge_block);
     then_block = builder->GetInsertBlock();
     // emit else block
-    function->insert(function->end(), else_block); // added to function
+    function->getBasicBlockList().push_back(else_block); // add to function
     builder->SetInsertPoint(else_block);
     llvm::Value *else_value = else_->codegen();
     if (!else_value) {
@@ -552,7 +599,7 @@ llvm::Value *IfExprAST::codegen() {
     builder->CreateBr(merge_block);
     else_block = builder->GetInsertBlock();
     // emit merge block
-    function->insert(function->end(), merge_block); // added to function
+    function->getBasicBlockList().push_back(merge_block); // add to function
     builder->SetInsertPoint(merge_block);
     // llvm ssa
     llvm::PHINode *phi_node = builder->CreatePHI(llvm::Type::getDoubleTy(*context), 2, "iftmp");
@@ -575,16 +622,12 @@ llvm::Function *PrototypeAST::codegen() {
 }
 
 llvm::Function *FunctionAST::codegen() {
+    auto &p = *prototype; // transfer ownership
+    function_prototypes[prototype->get_identifier()] = std::move(prototype);
     // check for existing function (extern)
-    llvm::Function *function = mod->getFunction(prototype->get_identifier());
-    if (!function) {
-        function = prototype->codegen();
-    }
+    llvm::Function *function = get_function(p.get_identifier());
     if (!function) {
         return nullptr;
-    }
-    if (!function->empty()) {
-        return (llvm::Function *) log_error_value("function cannot be redefined");
     }
     // create new block
     llvm::BasicBlock *basic_block = llvm::BasicBlock::Create(*context, "entry", function);
@@ -613,7 +656,7 @@ llvm::Function *FunctionAST::codegen() {
 static void handle_definition() {
     if (auto function_ast = parse_definition()) {
         if (auto *function_ir = function_ast->codegen()) {
-            fprintf(stderr, "handle_definition\n");
+            // fprintf(stderr, "handle_definition\n");
             function_ir->print(llvm::errs());
             fprintf(stderr, "\n");
         }
@@ -625,9 +668,10 @@ static void handle_definition() {
 static void handle_extern() {
     if (auto prototype_ast = parse_extern()) {
         if (auto *function_ir = prototype_ast->codegen()) {
-            fprintf(stderr, "handle_extern\n");
+            // fprintf(stderr, "handle_extern\n");
             function_ir->print(llvm::errs());
             fprintf(stderr, "\n");
+            function_prototypes[prototype_ast->get_identifier()] = std::move(prototype_ast);
         }
     } else {
         get_next_token(); // skip for error recovery
@@ -637,7 +681,7 @@ static void handle_extern() {
 static void handle_toplevel_expression() {
     if (auto function_ast = parse_toplevel_expr()) {
         if (auto *function_ir = function_ast->codegen()) {
-            fprintf(stderr, "handle_toplevel_expression\n");
+            // fprintf(stderr, "handle_toplevel_expression\n");
             function_ir->print(llvm::errs());
             fprintf(stderr, "\n");
             // remove anonymous expression
@@ -651,7 +695,6 @@ static void handle_toplevel_expression() {
 // top ::= definition | external | expression | ';'
 static void main_loop() {
     while (true) {
-        fprintf(stderr, "ready> ");
         switch (current_token) {
         case tok_eof:
             return;
@@ -668,6 +711,7 @@ static void main_loop() {
             handle_toplevel_expression();
             break;
         }
+        // fprintf(stderr, "ready> ");
     }
 }
 
@@ -681,8 +725,14 @@ int main() {
     binop_precedence['-'] = 20;
     binop_precedence['*'] = 40;
 
+    // std::string program = R"(4+5;)";
+    // use program as cin for getchar
+    // std::stringbuf program_buffer(program);
+    // std::streambuf *cinbuf = std::cin.rdbuf();
+    // std::cin.rdbuf(&program_buffer);
+
     // first token
-    // fprintf(stderr, "ready> ");
+    fprintf(stderr, "ready> ");
     get_next_token();
 
     // init llvm
