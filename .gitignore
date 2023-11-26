@@ -21,3 +21,7 @@ rust/rust-macros/target/*
 cpp/kaleidoscope/a.out.dSYM/*
 cpp/kaleidoscope/parser.dSYM/*
 cpp/kaleidoscope/parser
+cpp/kaleidoscope/fparser.dSYM/Contents/Info.plist
+cpp/kaleidoscope/fparser.dSYM/Contents/Resources/DWARF/fparser
+cpp/kaleidoscope/fparser
+cpp/kaleidoscope/KaleidoscopeJIT.h
