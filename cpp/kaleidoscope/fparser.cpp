@@ -227,44 +227,26 @@ llvm::Value *log_error_value(const std::string message, const std::string lexeme
     return nullptr;
 }
 
-// codegen : tok_plus
-llvm::Value *codegen_plus(const AST& tree) {
+// codegen : binop
+llvm::Value *codegen_binop(const AST& tree) {
     llvm::Value *left = codegen(tree.children[0]);
     llvm::Value *right = codegen(tree.children[1]);
     if (!left || !right) {
         return nullptr;
     }
-    return builder->CreateFAdd(left, right, "addtmp");
-}
-
-// codegen : tok_minus
-llvm::Value *codegen_minus(const AST& tree) {
-    llvm::Value *left = codegen(tree.children[0]);
-    llvm::Value *right = codegen(tree.children[1]);
-    if (!left || !right) {
-        return nullptr;
+    if (tree.token.type == TokenType::tok_plus) {
+        return builder->CreateFAdd(left, right, "addtmp");
     }
-    return builder->CreateFSub(left, right, "subtmp");
-}
-
-// codegen : tok_multiply
-llvm::Value *codegen_multiply(const AST& tree) {
-    llvm::Value *left = codegen(tree.children[0]);
-    llvm::Value *right = codegen(tree.children[1]);
-    if (!left || !right) {
-        return nullptr;
+    if (tree.token.type == TokenType::tok_minus) {
+        return builder->CreateFSub(left, right, "subtmp");
     }
-    return builder->CreateFMul(left, right, "multmp");
-}
-
-// codegen : tok_divide
-llvm::Value *codegen_divide(const AST& tree) {
-    llvm::Value *left = codegen(tree.children[0]);
-    llvm::Value *right = codegen(tree.children[1]);
-    if (!left || !right) {
-        return nullptr;
+    if (tree.token.type == TokenType::tok_multiply) {
+        return builder->CreateFMul(left, right, "multmp");
     }
-    return builder->CreateFDiv(left, right, "divtmp");
+    if (tree.token.type == TokenType::tok_divide) {
+        return builder->CreateFDiv(left, right, "divtmp");
+    }
+    return log_error_value("codegen_binop : unexpected token", token_to_string(tree.token));
 }
 
 // codegen : tok_number
@@ -283,20 +265,12 @@ llvm::Value *codegen(const AST& tree) {
     case TokenType::tok_eof:
         return nullptr;
     case TokenType::tok_number:
-        // std::cout << "codegen : tok_number" << std::endl;
         return codegen_number(tree);
     case TokenType::tok_plus:
-        // std::cout << "codegen : tok_plus" << std::endl;
-        return codegen_plus(tree);
     case TokenType::tok_minus:
-        // std::cout << "codegen : tok_minus" << std::endl;
-        return codegen_minus(tree);
     case TokenType::tok_multiply:
-        // std::cout << "codegen : tok_multiply" << std::endl;
-        return codegen_multiply(tree);
     case TokenType::tok_divide:
-        // std::cout << "codegen : tok_divide" << std::endl;
-        return codegen_divide(tree);
+        return codegen_binop(tree);
     default:
         return log_error_value("codegen : unexpected token", token_to_string(tree.token));
     }
@@ -339,6 +313,7 @@ int main() {
     llvm::BasicBlock *entry_block = llvm::BasicBlock::Create(*context, "entry", function);
     builder->SetInsertPoint(entry_block);
     builder->CreateRet(result);
+    // TODO verify function
 
     module->print(llvm::errs(), nullptr);
 }
