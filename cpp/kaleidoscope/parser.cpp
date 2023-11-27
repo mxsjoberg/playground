@@ -184,14 +184,27 @@ static int next_token() {
             identifier += current_char;
         }
         // keywords
-        if (identifier == "def") { return tok_def; }
-        if (identifier == "extern") { return tok_extern; }
-        if (identifier == "if") { return tok_if; }
-        if (identifier == "then") { return tok_then; }
-        if (identifier == "else") { return tok_else; }
-        if (identifier == "for") { return tok_for; }
-        if (identifier == "in") { return tok_in; }
-
+        if (identifier == "def") {
+            return tok_def;
+        }
+        if (identifier == "extern") {
+            return tok_extern;
+        }
+        if (identifier == "if") {
+            return tok_if;
+        }
+        if (identifier == "then") {
+            return tok_then;
+        }
+        if (identifier == "else") {
+            return tok_else;
+        }
+        if (identifier == "for") {
+            return tok_for;
+        }
+        if (identifier == "in") {
+            return tok_in;
+        }
         return tok_identifier;
     }
     // number: [0-9.]+
@@ -464,7 +477,6 @@ static std::unique_ptr<ExprAST> parse_for_expr() {
         return nullptr;
     }
     return std::make_unique<ForExprAST>(id, std::move(start), std::move(end), std::move(step), std::move(body));
-
 }
 
 // primary ::= identifierexpr | numberexpr | parenexpr
