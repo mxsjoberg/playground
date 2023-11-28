@@ -2,19 +2,17 @@
 #include <regex>
 #include <string>
 #include <vector>
-
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/IRBuilder.h"
-
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
-#include "llvm/ADT/APFloat.h"
+#include "llvm/ADT/APInt.h"
 
-#define log_error(message, lexeme) std::cout << message << " : " << lexeme << std::endl;
+#define log_error(message, lexeme) std::cout << "error : " << message << " : " << lexeme << std::endl; exit(1);
 
 // --------------------------------------------------------
 // lexer
@@ -33,7 +31,7 @@ enum class TokenType {
 struct Token {
     TokenType type;
     std::string lexeme;
-    double number;
+    int number;
 };
 
 std::string token_to_string(const Token& token) {
@@ -98,13 +96,15 @@ std::vector<Token> tokenize(const std::string& source) {
                         ch_index++;
                     }
                     std::string lexeme = source.substr(start, ch_index - start);
-                    tokens.push_back({ TokenType::tok_number, lexeme, std::stod(lexeme) });
+                    // tokens.push_back({ TokenType::tok_number, lexeme, std::stod(lexeme) });
+                    tokens.push_back({ TokenType::tok_number, lexeme, std::stoi(lexeme) });
                 } else if (isalpha(ch)) {
                     size_t start = ch_index;
                     while (isalnum(source[ch_index]) && ch_index < source.size()) {
                         ch_index++;
                     }
                     std::string lexeme = source.substr(start, ch_index - start);
+                    // not implemented yet
                     log_error("tokenize : unexpected identifier", lexeme);
                 } else {
                     log_error("tokenize : unexpected character", ch);
@@ -133,43 +133,21 @@ void print_tree(const AST& node, int level = 0) {
 // --------------------------------------------------------
 // parser
 
-// parse : factor ::= '+' factor | '-' factor | tok_number | '(' expression ')'
+// parse : factor ::= tok_number
 AST parse_factor(const std::vector<Token>& tokens, size_t& token_index) {
     AST expression;
     AST factor;
     Token token = tokens[token_index];
     switch (token.type) {
-        case TokenType::tok_semicolon:
-            token_index++;
-            return expression;
-        case TokenType::tok_plus:
-        case TokenType::tok_minus:
-            factor.token = token;
-            token_index++;
-            factor.children.push_back(parse_factor(tokens, token_index));
-            return factor;
         case TokenType::tok_number:
             token_index++;
-            return AST{ token };
-        // LPAR expression RPAR
-        // case TokenType::LPAR:
-        //     // LPAR
-        //     token_index++;
-        //     // expression
-        //     expression = parse_expression(tokens, token_index);
-        //     // RPAR
-        //     if (tokens[token_index].type != TokenType::RPAR) {
-        //         throw std::runtime_error("Expected ')'");
-        //     }
-        //     token_index++;
-        //     return expression;
+            return AST { token };
         default:
             log_error("parse_factor : unexpected token", token.lexeme);
             token_index++;
             return AST { token };
     }
 }
-
 // parse : term ::= factor (('*' | '/') factor)*
 AST parse_term(const std::vector<Token>& tokens, size_t& token_index) {
     AST term = parse_factor(tokens, token_index);
@@ -178,12 +156,11 @@ AST parse_term(const std::vector<Token>& tokens, size_t& token_index) {
         token_index++;
         // factor
         auto children = { term, parse_factor(tokens, token_index) };
-        term = AST{ token, children };
+        term = AST { token, children };
     }
     return term;
 }
-
-// parse : expression ::= term ('+' term)* ;
+// parse : expression ::= term ('+' term)* ';'
 AST parse_expression(const std::vector<Token>& tokens, size_t& token_index) {
     AST expression = parse_term(tokens, token_index);
     while (tokens[token_index].type == TokenType::tok_plus || tokens[token_index].type == TokenType::tok_minus) {
@@ -191,22 +168,20 @@ AST parse_expression(const std::vector<Token>& tokens, size_t& token_index) {
         token_index++;
         // term
         auto children = { expression, parse_term(tokens, token_index) };
-        expression = AST{ token, children };
-        // semicolon
-        if (tokens[token_index].type != TokenType::tok_semicolon) {
-            log_error("parse_expression : expected ';'", tokens[token_index].lexeme);
-            break;
-        }
-        token_index++;
+        expression = AST { token, children };
     }
+    // semicolon
+    if (tokens[token_index].type != TokenType::tok_semicolon) {
+        log_error("parse_expression : expected ';'", tokens[token_index].lexeme);
+    }
+    token_index++;
     return expression;
 }
-
 // parse
 AST parse(const std::vector<Token>& tokens) {
     size_t token_index = 0;
     AST program;
-    program.token = Token{ TokenType::tok_bof, "" };
+    program.token = Token { TokenType::tok_bof, "" };
     while (token_index < tokens.size()) {
         program.children.push_back(parse_expression(tokens, token_index));
     }
@@ -235,25 +210,23 @@ llvm::Value *codegen_binop(const AST& tree) {
         return nullptr;
     }
     if (tree.token.type == TokenType::tok_plus) {
-        return builder->CreateFAdd(left, right, "addtmp");
+        return builder->CreateAdd(left, right, "addtmp");
     }
     if (tree.token.type == TokenType::tok_minus) {
-        return builder->CreateFSub(left, right, "subtmp");
+        return builder->CreateSub(left, right, "subtmp");
     }
     if (tree.token.type == TokenType::tok_multiply) {
-        return builder->CreateFMul(left, right, "multmp");
+        return builder->CreateMul(left, right, "multmp");
     }
     if (tree.token.type == TokenType::tok_divide) {
-        return builder->CreateFDiv(left, right, "divtmp");
+        return builder->CreateSDiv(left, right, "divtmp");
     }
     return log_error_value("codegen_binop : unexpected token", token_to_string(tree.token));
 }
-
 // codegen : tok_number
 llvm::Value *codegen_number(const AST& tree) {
-    return llvm::ConstantFP::get(*context, llvm::APFloat(tree.token.number));
+    return llvm::ConstantInt::get(*context, llvm::APInt(32, tree.token.number, true));
 }
-
 // codegen
 llvm::Value *codegen(const AST& tree) {
     switch (tree.token.type) {
@@ -279,20 +252,13 @@ llvm::Value *codegen(const AST& tree) {
 // --------------------------------------------------------
 // driver
 
-// clang++ -g -O0 fparser.cpp -o fparser `llvm-config --cxxflags --ldflags --system-libs --libs core`; ./fparser
+// clang++ -g -O0 fparser.cpp -o fparser `llvm-config --cxxflags --ldflags --system-libs --libs core` && ./fparser
+// clang++ -g -O0 fparser.cpp -o fparser `llvm-config --cxxflags --ldflags --system-libs --libs core` && ./fparser > out.ll 
+// lli out.ll; echo $?
 int main() {
     std::string program = R"(
         4+5*2;
     )";
-    /*
-    ; ModuleID = 'llvm codegen'
-    source_filename = "llvm codegen"
-
-    define double @__anon_expr() {
-    entry:
-      ret double 1.400000e+01
-    }
-    */
     std::regex pattern(R"(^\s+)", std::regex::multiline);
     std::string source = std::regex_replace(program, pattern, "");
     // tokens
@@ -307,13 +273,17 @@ int main() {
     builder = std::make_unique<llvm::IRBuilder<>>(*context);
     // generate llvm ir
     llvm::Value *result = codegen(tree);
-    // create anonymous function as entry point
-    llvm::FunctionType *function_type = llvm::FunctionType::get(builder->getDoubleTy(), false);
-    llvm::Function *function = llvm::Function::Create(function_type, llvm::Function::ExternalLinkage, "__anon_expr", module.get());
+    // create function type
+    llvm::FunctionType *function_type = llvm::FunctionType::get(builder->getInt32Ty(), false);
+    // create function
+    llvm::Function *function = llvm::Function::Create(function_type, llvm::Function::ExternalLinkage, "main", module.get());
+    // create entry block
     llvm::BasicBlock *entry_block = llvm::BasicBlock::Create(*context, "entry", function);
     builder->SetInsertPoint(entry_block);
+    // create return instruction
     builder->CreateRet(result);
-    // TODO verify function
-
-    module->print(llvm::errs(), nullptr);
+    // verify
+    llvm::verifyFunction(*function);
+    // print llvm ir
+    module->print(llvm::outs(), nullptr);
 }
