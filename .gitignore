@@ -25,3 +25,8 @@ cpp/kaleidoscope/fparser.dSYM/Contents/Info.plist
 cpp/kaleidoscope/fparser.dSYM/Contents/Resources/DWARF/fparser
 cpp/kaleidoscope/fparser
 cpp/kaleidoscope/KaleidoscopeJIT.h
+cpp/kaleidoscope/test.ll
+cpp/kaleidoscope/tmp
+cpp/kaleidoscope/tmp.cpp
+cpp/kaleidoscope/tmp.dSYM/Contents/Info.plist
+cpp/kaleidoscope/tmp.dSYM/Contents/Resources/DWARF/tmp
