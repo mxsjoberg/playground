@@ -1,19 +1,15 @@
 ; ModuleID = 'llvm codegen'
 source_filename = "llvm codegen"
 
+@0 = private unnamed_addr constant [4 x i8] c"%f\0A\00", align 1
+
 define i32 @main() {
 entry:
-  %calltmp = call i32 @foo(i32 1, i32 2)
-  ret i32 %calltmp
+  %calltmp = call double @cos(double 1.234000e+00)
+  %printfCall = call i32 (i8*, double, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @0, i32 0, i32 0), double %calltmp)
+  ret i32 0
 }
 
-define i32 @foo(i32 %a, i32 %b) {
-entry:
-  %multmp = mul i32 %a, %a
-  %multmp1 = mul i32 2, %a
-  %multmp2 = mul i32 %multmp1, %b
-  %addtmp = add i32 %multmp, %multmp2
-  %multmp3 = mul i32 %b, %b
-  %addtmp4 = add i32 %addtmp, %multmp3
-  ret i32 %addtmp4
-}
+declare double @cos(double)
+
+declare i32 @printf(i8*, double, ...)
