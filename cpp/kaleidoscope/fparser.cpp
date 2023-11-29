@@ -266,7 +266,6 @@ AST parse_definition(const std::vector<Token>& tokens, size_t& token_index) {
     AST expression = parse_expression(tokens, token_index);
     return AST { fname, { expression }, arguments };
 }
-
 // parse : external :== 'extern' tok_identifier '(' (tok_identifier)+ ')' ';'
 AST parse_external(const std::vector<Token>& tokens, size_t& token_index) {
     token_index++;
@@ -295,7 +294,6 @@ AST parse_external(const std::vector<Token>& tokens, size_t& token_index) {
     token_index++;
     return AST { fname, {}, arguments };
 }
-
 // parse
 AST parse(const std::vector<Token>& tokens) {
     size_t token_index = 0;
@@ -360,7 +358,6 @@ llvm::Value *codegen_number(const AST& tree) {
     // return llvm::ConstantInt::get(*context, llvm::APInt(32, tree.token.number, true));
     return llvm::ConstantFP::get(*context, llvm::APFloat(tree.token.number));
 }
-
 // codegen : tok_identifier
 llvm::Value *codegen_identifier(const AST& tree) {
     if (tree.children.size() > 0) {
@@ -381,7 +378,6 @@ llvm::Value *codegen_identifier(const AST& tree) {
         }
     }
 }
-
 // codegen : tok_def
 llvm::Function *codegen_function(const AST& tree) {
     llvm::BasicBlock *main_entry_block = builder->GetInsertBlock();
@@ -406,7 +402,6 @@ llvm::Function *codegen_function(const AST& tree) {
     builder->SetInsertPoint(main_entry_block);
     return function;
 }
-
 // codegen : tok_extern
 llvm::Function *codegen_extern(const AST& tree) {
     llvm::BasicBlock *main_entry_block = builder->GetInsertBlock();
@@ -425,7 +420,6 @@ llvm::Function *codegen_extern(const AST& tree) {
     builder->SetInsertPoint(main_entry_block);
     return function;
 }
-
 // codegen
 llvm::Value *codegen(const AST& tree) {
     llvm::Value *result = nullptr;
@@ -460,7 +454,6 @@ llvm::Value *codegen(const AST& tree) {
 // --------------------------------------------------------
 // driver
 
-// clang++ -g -O0 fparser.cpp -o fparser `llvm-config --cxxflags --ldflags --system-libs --libs core` && ./fparser
 // clang++ -g -O0 fparser.cpp -o fparser `llvm-config --cxxflags --ldflags --system-libs --libs core` && ./fparser > out.ll 
 // lli out.ll; echo $?
 int main() {
