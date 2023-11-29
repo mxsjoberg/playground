@@ -12,6 +12,7 @@
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/ADT/APInt.h"
+#include "llvm/ADT/APFloat.h"
 
 #define log(message) std::cout << message << std::endl;
 #define log_error(message, lexeme) std::cout << "error : " << message << " : " << lexeme << std::endl; exit(1);
@@ -39,7 +40,7 @@ struct Token {
     TokenType type;
     std::string lexeme;
     // values
-    int number;
+    double number;
     std::string identifier;
 };
 
@@ -64,7 +65,7 @@ std::string token_to_string(const Token& token, bool include_token = true) {
         case TokenType::tok_def:
             return "tok_def(" + token.identifier + ")";
         case TokenType::tok_extern:
-            return "tok_extern";
+            return "tok_extern(" + token.identifier + ")";
         case TokenType::tok_identifier:
             return include_token ? "tok_identifier(" + token.identifier + ")" : token.identifier;
         case TokenType::tok_lparen:
@@ -119,11 +120,11 @@ std::vector<Token> tokenize(const std::string& source) {
             default:
                 if (isdigit(ch)) {
                     size_t start = ch_index;
-                    while (isdigit(source[ch_index]) && ch_index < source.size()) {
+                    while ((isdigit(source[ch_index]) || source[ch_index] == '.' ) && ch_index < source.size()) {
                         ch_index++;
                     }
                     std::string lexeme = source.substr(start, ch_index - start);
-                    tokens.push_back({ TokenType::tok_number, lexeme, std::stoi(lexeme) });
+                    tokens.push_back({ TokenType::tok_number, lexeme, std::stod(lexeme) });
                 } else if (isalpha(ch)) {
                     size_t start = ch_index;
                     while (isalnum(source[ch_index]) && ch_index < source.size()) {
@@ -265,6 +266,36 @@ AST parse_definition(const std::vector<Token>& tokens, size_t& token_index) {
     AST expression = parse_expression(tokens, token_index);
     return AST { fname, { expression }, arguments };
 }
+
+// parse : external :== 'extern' tok_identifier '(' (tok_identifier)+ ')' ';'
+AST parse_external(const std::vector<Token>& tokens, size_t& token_index) {
+    token_index++;
+    // function name
+    Token fname = { TokenType::tok_extern, "", 0, tokens[token_index].identifier };
+    token_index++;
+    // arguments
+    if (tokens[token_index].type != TokenType::tok_lparen) {
+        log_error("parse_external : expected '('", tokens[token_index].lexeme);
+    }
+    token_index++;
+    std::vector<Token> arguments;
+    while (tokens[token_index].type == TokenType::tok_identifier) {
+        Token token = tokens[token_index];
+        token_index++;
+        arguments.push_back(token);
+    }
+    if (tokens[token_index].type != TokenType::tok_rparen) {
+        log_error("parse_external : expected ')'", tokens[token_index].lexeme);
+    }
+    token_index++;
+    // semicolon
+    if (tokens[token_index].type != TokenType::tok_semicolon) {
+        log_error("parse_external : expected ';'", tokens[token_index].lexeme);
+    }
+    token_index++;
+    return AST { fname, {}, arguments };
+}
+
 // parse
 AST parse(const std::vector<Token>& tokens) {
     size_t token_index = 0;
@@ -272,7 +303,9 @@ AST parse(const std::vector<Token>& tokens) {
     program.token = Token { TokenType::tok_bof, "" };
     while (token_index < tokens.size()) {
         if (tokens[token_index].type == TokenType::tok_def) {
-            program.children.push_back(parse_definition(tokens, token_index));    
+            program.children.push_back(parse_definition(tokens, token_index));
+        } else if (tokens[token_index].type == TokenType::tok_extern) {
+            program.children.push_back(parse_external(tokens, token_index));
         } else {
             program.children.push_back(parse_expression(tokens, token_index));
         }
@@ -292,7 +325,7 @@ static std::map<std::string, llvm::Value *> named_values;
 llvm::Value *codegen(const AST& tree);
 
 llvm::Value *log_value(const std::string message) {
-    log_error(message);
+    log(message);
     return nullptr;
 }
 
@@ -309,22 +342,23 @@ llvm::Value *codegen_binop(const AST& tree) {
         return nullptr;
     }
     if (tree.token.type == TokenType::tok_plus) {
-        return builder->CreateAdd(left, right, "addtmp");
+        return builder->CreateFAdd(left, right, "addtmp");
     }
     if (tree.token.type == TokenType::tok_minus) {
-        return builder->CreateSub(left, right, "subtmp");
+        return builder->CreateFSub(left, right, "subtmp");
     }
     if (tree.token.type == TokenType::tok_multiply) {
-        return builder->CreateMul(left, right, "multmp");
+        return builder->CreateFMul(left, right, "multmp");
     }
     if (tree.token.type == TokenType::tok_divide) {
-        return builder->CreateSDiv(left, right, "divtmp");
+        return builder->CreateFDiv(left, right, "divtmp");
     }
     return log_error_value("codegen_binop : unexpected token", token_to_string(tree.token));
 }
 // codegen : tok_number
 llvm::Value *codegen_number(const AST& tree) {
-    return llvm::ConstantInt::get(*context, llvm::APInt(32, tree.token.number, true));
+    // return llvm::ConstantInt::get(*context, llvm::APInt(32, tree.token.number, true));
+    return llvm::ConstantFP::get(*context, llvm::APFloat(tree.token.number));
 }
 
 // codegen : tok_identifier
@@ -348,12 +382,12 @@ llvm::Value *codegen_identifier(const AST& tree) {
     }
 }
 
-// codegen : function
+// codegen : tok_def
 llvm::Function *codegen_function(const AST& tree) {
     llvm::BasicBlock *main_entry_block = builder->GetInsertBlock();
     // define new function
-    std::vector<llvm::Type *> argument_types(2, builder->getInt32Ty());
-    llvm::FunctionType *function_type = llvm::FunctionType::get(builder->getInt32Ty(), argument_types, false);
+    std::vector<llvm::Type *> argument_types(tree.arguments.size(), builder->getDoubleTy());
+    llvm::FunctionType *function_type = llvm::FunctionType::get(builder->getDoubleTy(), argument_types, false);
     llvm::Function *function = llvm::Function::Create(function_type, llvm::Function::ExternalLinkage, tree.token.identifier, module.get());
     // set parameters
     llvm::Function::arg_iterator function_arguments = function->arg_begin();
@@ -368,6 +402,25 @@ llvm::Function *codegen_function(const AST& tree) {
     // function body
     llvm::Value *body = codegen(tree.children[0]);
     builder->CreateRet(body);
+    // move back to main entry block
+    builder->SetInsertPoint(main_entry_block);
+    return function;
+}
+
+// codegen : tok_extern
+llvm::Function *codegen_extern(const AST& tree) {
+    llvm::BasicBlock *main_entry_block = builder->GetInsertBlock();
+    // define new function
+    std::vector<llvm::Type *> argument_types(tree.arguments.size(), builder->getDoubleTy());
+    llvm::FunctionType *function_type = llvm::FunctionType::get(builder->getDoubleTy(), argument_types, false);
+    llvm::Function *function = llvm::Function::Create(function_type, llvm::Function::ExternalLinkage, tree.token.identifier, module.get());
+    // set parameters
+    llvm::Function::arg_iterator function_arguments = function->arg_begin();
+    for (auto &argument : tree.arguments) {
+        llvm::Value *llvm_argument = &*function_arguments++;
+        llvm_argument->setName(argument.identifier);
+        named_values[argument.identifier] = llvm_argument;
+    }
     // move back to main entry block
     builder->SetInsertPoint(main_entry_block);
     return function;
@@ -394,6 +447,9 @@ llvm::Value *codegen(const AST& tree) {
     case TokenType::tok_def:
         codegen_function(tree);
         return nullptr;
+    case TokenType::tok_extern:
+        codegen_extern(tree);
+        return nullptr;
     case TokenType::tok_identifier:
         return codegen_identifier(tree);
     default:
@@ -408,9 +464,13 @@ llvm::Value *codegen(const AST& tree) {
 // clang++ -g -O0 fparser.cpp -o fparser `llvm-config --cxxflags --ldflags --system-libs --libs core` && ./fparser > out.ll 
 // lli out.ll; echo $?
 int main() {
+    // std::string program = R"(
+    //     def foo(a b) a*a + 2*a*b + b*b;
+    //     foo(1 2);
+    // )";
     std::string program = R"(
-        def foo(a b) a*a + 2*a*b + b*b;
-        foo(1 2);
+        extern cos(x);
+        cos(1.234);
     )";
     std::regex pattern(R"(^\s+)", std::regex::multiline);
     std::string source = std::regex_replace(program, pattern, "");
@@ -431,13 +491,23 @@ int main() {
     builder->SetInsertPoint(main_entry_block);
     // generate llvm ir
     llvm::Value *result = codegen(tree);
-    if (result == nullptr) {
-        result = llvm::ConstantInt::get(*context, llvm::APInt(32, 0, false));
+    if (result != nullptr) {
+        // declare printf function
+        std::vector<llvm::Type*> printf_arguments;
+        printf_arguments.push_back(builder->getInt8PtrTy());
+        printf_arguments.push_back(llvm::Type::getDoubleTy(*context));
+        llvm::FunctionType *printf_function_type = llvm::FunctionType::get(builder->getInt32Ty(), printf_arguments, true);
+        llvm::Function *printf_function = llvm::Function::Create(printf_function_type, llvm::Function::ExternalLinkage, "printf", module.get());
+        // create the printf call
+        std::vector<llvm::Value*> printf_values;
+        printf_values.push_back(builder->CreateGlobalStringPtr("%f\n"));
+        printf_values.push_back(result);
+        builder->CreateCall(printf_function, printf_values, "printfCall");
     }
     // set entry block
     builder->SetInsertPoint(main_entry_block);
     // create return instruction
-    builder->CreateRet(result);
+    builder->CreateRet(builder->getInt32(0));
     // verify
     llvm::verifyFunction(*function);
     // print llvm ir
