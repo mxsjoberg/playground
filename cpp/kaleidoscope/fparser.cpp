@@ -454,8 +454,12 @@ llvm::Value *codegen(const AST& tree) {
 // --------------------------------------------------------
 // driver
 
+// TODO : move this to run.sh
 // clang++ -g -O0 fparser.cpp -o fparser `llvm-config --cxxflags --ldflags --system-libs --libs core` && ./fparser > out.ll 
 // lli out.ll; echo $?
+
+// TODO : arrays? llvm::ArrayType
+
 int main() {
     // std::string program = R"(
     //     def foo(a b) a*a + 2*a*b + b*b;
